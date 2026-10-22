@@ -9,7 +9,7 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_small"
-    android:configure="com.countryalert.unrest.ConfigActivity"
-    android:widgetFeatures="reconfigurable"
+    android:configure="com.countryalert.unrest.WidgetSetupActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:widgetCategory="home_screen"
     android:description="@string/widget_description" />

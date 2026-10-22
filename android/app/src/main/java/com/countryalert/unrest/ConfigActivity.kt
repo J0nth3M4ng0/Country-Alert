@@ -19,7 +19,7 @@ import com.countryalert.unrest.core.withDefaultCountry
  * Opens when a widget is added (to choose its city) and from the app icon
  * (to check a city right away).
  */
-class ConfigActivity : Activity() {
+open class ConfigActivity : Activity() {
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var city: EditText
     private lateinit var context: EditText

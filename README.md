@@ -41,8 +41,9 @@ the new one. Your widgets and their cities are removed with it, so add them agai
 1. Download the APK: on GitHub open **Actions → Build → the latest run →
    Artifacts → city-unrest-android**, and unzip it.
 2. Open `app-release.apk` on your phone and allow installing from that source.
-3. Long-press the home screen → **Widgets** → **City Unrest** → drag it onto
-   the screen, then enter the city.
+3. Long-press the home screen → **Widgets** → **City Unrest** → add it. On
+   Android 12 and newer it appears straight away saying **Tap to set up**; tap
+   it and enter the city. (Older Android asks for the city as you add it.)
 4. Resize it to switch between small, medium and large.
 
 Tap the widget to open the news search, a headline to read it, the MFA line

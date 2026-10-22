@@ -105,7 +105,7 @@ class UnrestWidget : AppWidgetProvider() {
             PendingIntent.getActivity(
                 context,
                 id,
-                Intent(context, ConfigActivity::class.java)
+                Intent(context, WidgetSetupActivity::class.java)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -128,7 +128,10 @@ class UnrestWidget : AppWidgetProvider() {
                 v.setTextViewText(R.id.level, if (params == null) "Tap to set up" else "Loading…")
                 v.setTextColor(R.id.level, Color.WHITE)
                 v.setViewVisibility(R.id.mfa, View.GONE)
-                v.setTextViewText(R.id.meta, store.error(id)?.let { "Couldn't load: $it" } ?: "")
+                v.setTextViewText(
+                    R.id.meta,
+                    store.error(id)?.let { "Couldn't load: $it" } ?: if (params == null) "Choose a city for this widget" else "",
+                )
                 v.setTextViewText(R.id.updated, if (params == null) "" else "Tap here to retry ↻")
                 v.setInt(R.id.glow, "setColorFilter", Color.GRAY)
                 if (size != Size.SMALL) hideWideExtras(v)

@@ -1,0 +1,12 @@
+{
+  "name": "city-unrest-widget",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phone widget that tracks civil unrest in a city from open-source news.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/check-city.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

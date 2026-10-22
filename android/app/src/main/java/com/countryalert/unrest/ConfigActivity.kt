@@ -12,6 +12,7 @@ import android.widget.TextView
 import com.countryalert.unrest.core.Params
 import com.countryalert.unrest.core.Report
 import com.countryalert.unrest.core.UnrestData
+import com.countryalert.unrest.core.displayTitle
 import com.countryalert.unrest.core.buildReport
 import com.countryalert.unrest.core.withDefaultCountry
 
@@ -26,6 +27,7 @@ open class ConfigActivity : Activity() {
     private lateinit var country: EditText
     private lateinit var result: TextView
     private lateinit var localNews: CheckBox
+    private lateinit var translate: CheckBox
     private lateinit var save: Button
     private lateinit var check: Button
 
@@ -41,6 +43,7 @@ open class ConfigActivity : Activity() {
         country = view(R.id.input_country)
         result = view(R.id.result)
         localNews = view(R.id.input_local)
+        translate = view(R.id.input_translate)
         save = view(R.id.button_save)
         check = view(R.id.button_check)
 
@@ -51,6 +54,7 @@ open class ConfigActivity : Activity() {
         WidgetStore(this).params(widgetId)?.let {
             city.setText((listOf(it.city) + it.names).joinToString(" / "))
             localNews.isChecked = it.localNews
+            translate.isChecked = it.translate
             context.setText(it.context)
             country.setText(it.country)
         }
@@ -73,6 +77,7 @@ open class ConfigActivity : Activity() {
             country = country.text.toString().trim(),
             names = spellings.drop(1),
             localNews = localNews.isChecked,
+            translate = translate.isChecked,
         )
     }
 
@@ -127,7 +132,8 @@ open class ConfigActivity : Activity() {
         if (r.headlines.isNotEmpty()) append("\nHeadlines:\n")
         r.headlines.forEach {
             val tag = if (it.lang != "en") " [${it.lang.uppercase()}]" else ""
-            append("• ${it.title} — ${it.source}$tag\n")
+            append("• ${displayTitle(it)} — ${it.source}$tag\n")
+            if (it.translated != null) append("   Original: ${it.title}\n")
         }
         if (r.errors.isNotEmpty()) append("\nSome sources failed: ${r.errors.joinToString("; ")}\n")
     }

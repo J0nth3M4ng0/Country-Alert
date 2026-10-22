@@ -21,6 +21,7 @@ class WidgetStore(context: Context) {
             country = prefs.getString("country_$id", "").orEmpty(),
             names = prefs.getString("names_$id", "").orEmpty().split("/").filter { it.isNotBlank() },
             localNews = prefs.getBoolean("local_$id", true),
+            translate = prefs.getBoolean("translate_$id", true),
         )
     }
 
@@ -31,6 +32,7 @@ class WidgetStore(context: Context) {
             .putString("country_$id", p.country)
             .putString("names_$id", p.names.joinToString("/"))
             .putBoolean("local_$id", p.localNews)
+            .putBoolean("translate_$id", p.translate)
             .remove("report_$id")
             .remove("history_$id")
             .apply()
@@ -65,7 +67,7 @@ class WidgetStore(context: Context) {
 
     fun delete(id: Int) {
         prefs.edit().apply {
-            listOf("city", "names", "local", "context", "country", "report", "history", "error").forEach { remove("${it}_$id") }
+            listOf("city", "names", "local", "translate", "context", "country", "report", "history", "error").forEach { remove("${it}_$id") }
         }.apply()
     }
 }

@@ -116,7 +116,7 @@ test("report reads the local and English feeds", async () => {
     if (url.includes("mfa.gov.sg")) return fixture("mfa-france.html");
     throw new Error("unexpected " + url);
   };
-  const r = await w.buildReport({ city: "Paris", country: "france", fetchText, now: NOW });
+  const r = await w.buildReport({ city: "Paris", country: "france", translate: false, fetchText, now: NOW });
   assert.deepStrictEqual(r.editions, ["FR:fr", "US:en"]);
   const fr = r.headlines.filter((h) => h.lang === "fr").map((h) => h.source).sort();
   assert.deepStrictEqual(fr, ["20 Minutes", "BFM", "Le Parisien"]);
@@ -137,7 +137,7 @@ test("a failing local feed doesn't break the report", async () => {
     if (url.includes("mfa.gov.sg")) return fixture("mfa-france.html");
     throw new Error("unexpected " + url);
   };
-  const r = await w.buildReport({ city: "Paris", country: "france", fetchText, now: NOW });
+  const r = await w.buildReport({ city: "Paris", country: "france", translate: false, fetchText, now: NOW });
   assert.strictEqual(r.score, 67);
   assert.deepStrictEqual(r.errors, ["Google News (FR:fr): HTTP 400"]);
 });

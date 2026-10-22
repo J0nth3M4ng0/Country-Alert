@@ -64,7 +64,8 @@ class RefreshJob : JobService() {
             val store = WidgetStore(context)
             val params = store.params(id) ?: return
             try {
-                val report = buildReport(withDefaultCountry(params), ::httpGet)
+                val previous = store.report(id)?.translations ?: emptyMap()
+                val report = buildReport(withDefaultCountry(params), ::httpGet, translations = previous)
                 store.saveReport(id, report)
             } catch (e: Exception) {
                 store.saveError(id, e.message ?: e.javaClass.simpleName)

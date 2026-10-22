@@ -7,6 +7,7 @@
     <string name="label_city">City</string>
     <string name="hint_city">e.g. Nairobi. Add local spellings after /, e.g. Moscow / Москва</string>
     <string name="label_local">Also read news in the local language</string>
+    <string name="label_translate">Translate foreign headlines into English (uses Google Translate)</string>
     <string name="label_context">Context (optional)</string>
     <string name="hint_context">State or region, for cities that share a name, e.g. Oregon</string>
     <string name="label_country">Country for MFA check (optional)</string>

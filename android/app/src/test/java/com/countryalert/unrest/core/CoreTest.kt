@@ -206,7 +206,7 @@ class CoreTest {
         assertTrue(ok.score >= 55)
         assertTrue(ok.errors.isEmpty())
 
-        val down = buildReport(Params("Paris", country = "France"), { url ->
+        val down = buildReport(Params("Paris", country = "France", translate = false), { url ->
             if ("mfa.gov.sg" in url) throw IOException("HTTP 503") else news(url)
         }, now)
         assertEquals(MfaStatus.UNREADABLE, down.mfa!!.status)

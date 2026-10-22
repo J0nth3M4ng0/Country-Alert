@@ -29,6 +29,8 @@ const CONFIG = {
   defaultCity: "Paris",
   // Also read news in the city's local language (e.g. French for Paris).
   localNews: true,
+  // Translate foreign-language headlines into English (via Google Translate).
+  translate: true,
   // Minutes before iOS is asked to refresh the widget (iOS may delay it).
   refreshMinutes: 30,
   requestTimeoutSeconds: 15,
@@ -505,7 +507,66 @@ async function settle(promise) {
 }
 
 // fetchText(url) -> Promise<string>. Injected so this runs in Scriptable and Node.
-async function buildReport({ city, names = [], context = "", country = "", localNews = CONFIG.localNews, fetchText, now = new Date() }) {
+// ---- Headline translation ----
+
+// Google Translate's free web endpoint (the one translate.google.com uses).
+// Unofficial: if it fails or changes, headlines are shown untranslated.
+const TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=";
+const TRANSLATE_BATCH_CHARS = 1500;
+
+// The reply is [[[translated, original, ...], ...], ...]; joins the translated parts.
+function parseTranslation(json) {
+  if (!Array.isArray(json) || !Array.isArray(json[0])) throw new Error("unexpected reply");
+  return json[0].map((seg) => (Array.isArray(seg) && typeof seg[0] === "string" ? seg[0] : "")).join("");
+}
+
+// Adds `translated` to non-English headlines. `cache` (original -> English)
+// carries translations between refreshes so each headline is sent only once.
+// Returns { headlines, cache, error }.
+async function translateHeadlines(headlines, fetchText, cache = {}) {
+  const known = new Map(Object.entries(cache || {}));
+  const todo = [...new Set(headlines.filter((h) => h.lang && h.lang !== "en" && !known.has(h.title)).map((h) => h.title))];
+  const batches = [];
+  for (const t of todo) {
+    const last = batches[batches.length - 1];
+    if (last && last.join("\n").length + t.length < TRANSLATE_BATCH_CHARS) last.push(t);
+    else batches.push([t]);
+  }
+  let error = null;
+  for (const batch of batches) {
+    try {
+      const q = batch.map((t) => t.replace(/\s*\n\s*/g, " ")).join("\n");
+      const reply = String(await fetchText(TRANSLATE_URL + encodeURIComponent(q)));
+      // Google answers a web page instead of data when it's limiting requests.
+      if (!reply.trim().startsWith("[")) throw new Error("service unavailable, showing originals");
+      const lines = parseTranslation(JSON.parse(reply))
+        .split("\n")
+        .map((l) => l.trim());
+      if (lines.length !== batch.length) throw new Error("reply didn't match the headlines");
+      batch.forEach((t, i) => known.set(t, lines[i]));
+    } catch (e) {
+      error = "Translate: " + ((e && e.message) || e);
+      break;
+    }
+  }
+  const out = headlines.map((h) => {
+    const t = known.get(h.title);
+    return t && fold(t) !== fold(h.title) ? { ...h, translated: t } : h;
+  });
+  const keep = {};
+  for (const h of out) if (known.has(h.title)) keep[h.title] = known.get(h.title);
+  return { headlines: out, cache: keep, error };
+}
+
+// "[Translated] ..." for translated headlines, else the headline as written.
+function displayTitle(h) {
+  return h.translated ? "[Translated] " + h.translated : h.title;
+}
+
+async function buildReport({
+  city, names = [], context = "", country = "", localNews = CONFIG.localNews,
+  translate = CONFIG.translate, translations = {}, fetchText, now = new Date(),
+}) {
   const errors = [];
   const spellings = allNames(city, names);
   const editions = editionsFor(city, country, localNews);
@@ -543,7 +604,14 @@ async function buildReport({ city, names = [], context = "", country = "", local
     throw new Error("No sources reachable. " + errors.join("; "));
   }
 
-  const headlines = prepareHeadlines(items, spellings, now);
+  let headlines = prepareHeadlines(items, spellings, now);
+  let translationCache = {};
+  if (translate) {
+    const t = await translateHeadlines(headlines.slice(0, 10), fetchText, translations);
+    headlines = [...t.headlines, ...headlines.slice(10)];
+    translationCache = t.cache;
+    if (t.error) errors.push(t.error);
+  }
   const score = applyMfaFloor(scoreReport(headlines, volume), mfa);
   const level = levelFor(score);
   const sources = new Set(headlines.map((h) => h.source)).size;
@@ -558,6 +626,7 @@ async function buildReport({ city, names = [], context = "", country = "", local
     reports: headlines.length,
     sources,
     headlines: headlines.slice(0, 10),
+    translations: translationCache,
     volume,
     country,
     editions,
@@ -712,7 +781,7 @@ function addHeadline(stack, h, size) {
   addText(row, "● ", size - 2, { color: dotColor });
   const col = row.addStack();
   col.layoutVertically();
-  addText(col, h.title, size, { medium: true, lines: 2, scale: 0.85 });
+  addText(col, displayTitle(h), size, { medium: true, lines: 2, scale: 0.85 });
   const meta = h.source + (h.date ? " · " + timeAgo(h.date) : "") + langTag(h);
   addText(col, meta, size - 2, { alpha: 0.55, color: "#FFFFFF", lines: 1 });
 }
@@ -752,7 +821,7 @@ function buildWidget(report, trend, stale) {
       m.font = Font.mediumSystemFont(11);
     }
     const top = report.headlines[0];
-    const h = w.addText(top ? top.title : "No unrest reports in last 24h");
+    const h = w.addText(top ? displayTitle(top) : "No unrest reports in last 24h");
     h.font = Font.systemFont(11);
     h.lineLimit = showMfa ? 1 : 2;
     return w;
@@ -848,8 +917,9 @@ async function showInApp(report, trend) {
   table.addRow(head);
   for (const h of report.headlines) {
     const row = new UITableRow();
-    row.height = 74;
-    row.addText(h.title, `${h.source}${h.date ? " · " + timeAgo(h.date) : ""}${langTag(h)} · ${h.matched.join(", ")}`).titleFont =
+    const original = h.translated ? `\nOriginal: ${h.title}` : "";
+    row.height = h.translated ? 96 : 74;
+    row.addText(displayTitle(h), `${h.source}${h.date ? " · " + timeAgo(h.date) : ""}${langTag(h)} · ${h.matched.join(", ")}${original}`).titleFont =
       Font.mediumSystemFont(14);
     row.dismissOnSelect = false;
     row.onSelect = () => Safari.open(safeUrl(h.url) || report.link);
@@ -901,7 +971,12 @@ async function main() {
   let report;
   let stale = false;
   try {
-    report = await buildReport({ city, names, context, country, fetchText: scriptableFetch, now: new Date() });
+    report = await buildReport({
+      city, names, context, country,
+      translations: (cached.report && cached.report.translations) || {},
+      fetchText: scriptableFetch,
+      now: new Date(),
+    });
   } catch (e) {
     if (!cached.report) {
       const w = errorWidget("Couldn't load reports. " + e.message);
@@ -956,6 +1031,9 @@ if (IS_SCRIPTABLE) {
     mfaCountryUrl,
     checkMfa,
     applyMfaFloor,
+    translateHeadlines,
+    parseTranslation,
+    displayTitle,
     htmlToText,
     safeUrl,
     isMfaUrl,

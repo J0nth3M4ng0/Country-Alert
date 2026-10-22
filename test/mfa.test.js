@@ -100,7 +100,7 @@ test("full report includes MFA, and MFA failure doesn't break it", async () => {
     return null;
   };
   const ok = await w.buildReport({
-    city: "Yangon", country: "Myanmar", now: NOW,
+    city: "Yangon", country: "Myanmar", now: NOW, translate: false,
     fetchText: async (u) => (u.includes("mfa.gov.sg") ? fixture("mfa-myanmar.html") : news(u)),
   });
   assert.strictEqual(ok.mfa.status, "defer-all");
@@ -108,7 +108,7 @@ test("full report includes MFA, and MFA failure doesn't break it", async () => {
   assert.deepStrictEqual(ok.errors, []);
 
   const down = await w.buildReport({
-    city: "Paris", country: "France", now: NOW,
+    city: "Paris", country: "France", now: NOW, translate: false,
     fetchText: async (u) => {
       if (u.includes("mfa.gov.sg")) throw new Error("HTTP 503");
       return news(u);

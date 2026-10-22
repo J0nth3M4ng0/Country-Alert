@@ -20,6 +20,7 @@ fun Report.toJson(): JSONObject = JSONObject()
         JSONObject().put("last24h", it.last24h).put("baseline", it.baseline).put("daily", JSONArray(it.daily))
     })
     .put("editions", JSONArray(editions))
+    .put("translations", JSONObject(translations as Map<*, *>))
     .put("mfa", mfa?.toJson())
     .put("errors", JSONArray(errors))
     .put("link", link)
@@ -34,6 +35,7 @@ private fun Headline.toJson() = JSONObject()
     .put("matched", JSONArray(matched))
     .put("weight", weight)
     .put("lang", lang)
+    .put("translated", translated)
 
 private fun MfaResult.toJson() = JSONObject()
     .put("status", status.key)
@@ -75,6 +77,7 @@ fun reportFromJson(o: JSONObject): Report {
                 matched = h.optJSONArray("matched").strings(),
                 weight = h.optDouble("weight"),
                 lang = h.optString("lang", "en"),
+                translated = h.optStr("translated"),
             )
         },
         volume = v?.let {
@@ -82,6 +85,8 @@ fun reportFromJson(o: JSONObject): Report {
             Volume(it.getDouble("last24h"), it.getDouble("baseline"), (0 until d.length()).map { i -> d.getDouble(i) })
         },
         editions = o.optJSONArray("editions").strings(),
+        translations = o.optJSONObject("translations")?.let { t -> t.keys().asSequence().associateWith { t.getString(it) } }
+            ?: emptyMap(),
         mfa = m?.let {
             MfaResult(
                 status = MfaStatus.fromKey(it.optString("status")),

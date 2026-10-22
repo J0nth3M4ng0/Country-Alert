@@ -96,7 +96,7 @@ class LanguagesTest {
 
     @Test fun readsLocalAndEnglishFeeds() {
         val urls = mutableListOf<String>()
-        val r = buildReport(Params("Paris", country = "france"), { url ->
+        val r = buildReport(Params("Paris", country = "france", translate = false), { url ->
             synchronized(urls) { urls += url }
             when {
                 "timelinevolraw" in url -> fixture("gdelt-timeline.json")
@@ -117,7 +117,7 @@ class LanguagesTest {
     }
 
     @Test fun failingLocalFeedDoesntBreakReport() {
-        val r = buildReport(Params("Paris", country = "france"), { url ->
+        val r = buildReport(Params("Paris", country = "france", translate = false), { url ->
             when {
                 "timelinevolraw" in url -> fixture("gdelt-timeline.json")
                 "ceid=FR:fr" in url -> throw IOException("HTTP 400")

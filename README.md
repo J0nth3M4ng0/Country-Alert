@@ -86,7 +86,8 @@ free, keyless sources:
 - **Google News RSS**: headlines from the last 24 hours, from the city's
   local-language edition (e.g. French for Paris, Japanese for Tokyo, Hindi and
   English for Delhi) plus the international English edition. Local headlines
-  are shown as written, tagged with their language (e.g. `· FR`). Each
+  are translated into English and shown as **[Translated] …**, tagged with
+  their language (e.g. `· FR`); the app view also shows the original. Each
   headline is rated by its strongest term, in its own language and English:
   - severity 3: *killed, shooting, curfew, state of emergency, coup…*
   - severity 2: *riot, clashes, tear gas, looting, arrests, unrest…*
@@ -126,8 +127,11 @@ Countries in other languages get English news only. Turn it off with the
 - The local-language word lists are short and hand-written. They catch common
   wording but will miss some headlines and occasionally misread one. Corrections
   from native speakers are welcome in `data/unrest-data.json`.
-- Local headlines aren't translated. Tap one to open it; your browser can
-  translate the page.
+- Translation uses Google Translate's free web service (the one
+  translate.google.com uses). It's unofficial and Google may limit or change
+  it; when it's unavailable the original headlines are shown. Foreign headlines
+  are sent to Google to translate. Turn it off with the **Translate foreign
+  headlines** box (Android) or `translate: false` (iPhone).
 - Don't rely on it for safety decisions — check official advisories and local
   sources.
 

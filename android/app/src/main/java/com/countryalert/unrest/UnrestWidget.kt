@@ -17,6 +17,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.countryalert.unrest.core.MFA_BASE
 import com.countryalert.unrest.core.Report
+import com.countryalert.unrest.core.displayTitle
 import com.countryalert.unrest.core.isMfaUrl
 import com.countryalert.unrest.core.safeUrl
 import com.countryalert.unrest.core.timeAgo
@@ -217,7 +218,7 @@ class UnrestWidget : AppWidgetProvider() {
                     h.severity >= 2 -> "#FF9500"
                     else -> "#FFCC00"
                 }
-                v.setTextViewText(HEADLINE_TITLES[i], h.title)
+                v.setTextViewText(HEADLINE_TITLES[i], displayTitle(h))
                 v.setTextColor(HEADLINE_METAS[i], color(dot))
                 val tag = if (h.lang != "en") " · " + h.lang.uppercase() else ""
                 v.setTextViewText(HEADLINE_METAS[i], "● " + h.source + (h.date?.let { " · " + timeAgo(it) } ?: "") + tag)

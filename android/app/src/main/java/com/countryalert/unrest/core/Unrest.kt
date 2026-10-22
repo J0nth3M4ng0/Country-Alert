@@ -43,6 +43,7 @@ data class Params(
     val country: String = "",
     val names: List<String> = emptyList(),
     val localNews: Boolean = true,
+    val translate: Boolean = true,
 )
 
 /** Lowercase without Latin, Greek or Cyrillic accents; other scripts keep their marks. */
@@ -273,7 +274,12 @@ data class Headline(
     val matched: List<String>,
     val weight: Double,
     val lang: String = "en",
+    /** English translation of a foreign-language headline, if available. */
+    val translated: String? = null,
 )
+
+/** "[Translated] ..." for translated headlines, else the headline as written. */
+fun displayTitle(h: Headline): String = if (h.translated != null) "[Translated] " + h.translated else h.title
 
 fun normalizeTitle(t: String) =
     fold(t).replace(Regex("[^\\p{L}\\p{N} ]"), "").replace(Regex("\\s+"), " ").trim().take(80)
@@ -334,6 +340,8 @@ data class Report(
     val headlines: List<Headline>,
     val volume: Volume?,
     val editions: List<String>,
+    /** Original -> English, kept so the next refresh doesn't translate them again. */
+    val translations: Map<String, String>,
     val mfa: MfaResult?,
     val errors: List<String>,
     val link: String,
@@ -354,7 +362,12 @@ private fun <T> attempt(block: () -> T): Result<T> = try {
 private fun Throwable.short(): String = message ?: javaClass.simpleName
 
 /** Builds a report, fetching all sources in parallel. Call off the main thread. */
-fun buildReport(params: Params, fetchText: FetchText, now: Long = System.currentTimeMillis()): Report {
+fun buildReport(
+    params: Params,
+    fetchText: FetchText,
+    now: Long = System.currentTimeMillis(),
+    translations: Map<String, String> = emptyMap(),
+): Report {
     val city = params.city
     val context = params.context
     val country = params.country
@@ -401,7 +414,14 @@ fun buildReport(params: Params, fetchText: FetchText, now: Long = System.current
         throw NoSourcesException("No sources reachable. " + errors.joinToString("; "))
     }
 
-    val headlines = prepareHeadlines(items, spellings, now)
+    var headlines = prepareHeadlines(items, spellings, now)
+    var translationCache = emptyMap<String, String>()
+    if (params.translate) {
+        val t = translateHeadlines(headlines.take(10), fetchText, translations)
+        headlines = t.headlines + headlines.drop(10)
+        translationCache = t.cache
+        t.error?.let { errors += it }
+    }
     val score = applyMfaFloor(scoreReport(headlines, volume), mfa)
     val level = levelFor(score)
     return Report(
@@ -417,6 +437,7 @@ fun buildReport(params: Params, fetchText: FetchText, now: Long = System.current
         headlines = headlines.take(10),
         volume = volume,
         editions = editions,
+        translations = translationCache,
         mfa = mfa,
         errors = errors,
         link = googleNewsWebUrl(spellings, context),

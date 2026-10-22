@@ -12,8 +12,12 @@ test.before(async () => {
 });
 
 test("parses widget parameter", () => {
-  assert.deepStrictEqual(w.parseParam(" Portland | Oregon "), { city: "Portland", context: "Oregon" });
-  assert.deepStrictEqual(w.parseParam(""), { city: w.CONFIG.defaultCity, context: "" });
+  assert.deepStrictEqual(w.parseParam(" Portland | Oregon | United States "), {
+    city: "Portland",
+    context: "Oregon",
+    country: "United States",
+  });
+  assert.deepStrictEqual(w.parseParam(""), { city: w.CONFIG.defaultCity, context: "", country: "france" });
 });
 
 test("parses Google News RSS and strips source suffix", () => {

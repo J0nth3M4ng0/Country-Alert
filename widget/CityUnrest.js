@@ -8,11 +8,14 @@
  *
  * Runs in Scriptable (iOS). Set the widget's "Parameter" to a city, e.g.
  *   Paris
- *   Portland | Oregon        (second part narrows ambiguous names)
+ *   Portland | Oregon                  (second part narrows ambiguous names)
+ *   Portland | Oregon | United States  (third part: country for the MFA check)
  *
  * Sources (no API keys needed):
  *   - GDELT DOC 2.0 API: 7-day volume of unrest coverage mentioning the city
  *   - Google News RSS:   last-24h headlines, scored for severity
+ *   - Singapore MFA:     the country's travel advisory / notice, and whether
+ *                        it names the city
  *
  * The score is a rough signal, not ground truth. Always check the headlines.
  */
@@ -73,6 +76,71 @@ const LEVELS = [
   { min: 0, name: "Calm", color: "#34C759" },
 ];
 
+// Singapore Ministry of Foreign Affairs country travel pages.
+const MFA_BASE = "https://www.mfa.gov.sg/travelling-overseas/travel-advisories-notices-and-visa-information/";
+
+// MFA advice levels, most serious first.
+const MFA_LEVELS = {
+  "defer-all": { label: "Defer all travel", color: "#FF3B30", rank: 4 },
+  "defer-non-essential": { label: "Defer non-essential travel", color: "#FF9500", rank: 3 },
+  caution: { label: "Exercise caution", color: "#FFCC00", rank: 2 },
+  notice: { label: "Travel notice", color: "#FFCC00", rank: 1 },
+  none: { label: "No advisory", color: "#34C759", rank: 0 },
+  unreadable: { label: "Check MFA page", color: "#8E8E93", rank: -1 },
+};
+
+// Other names for countries, mapped to the words MFA uses.
+const COUNTRY_ALIASES = {
+  usa: "united states", us: "united states", america: "united states",
+  uk: "united kingdom", britain: "united kingdom", "great britain": "united kingdom",
+  england: "united kingdom", scotland: "united kingdom", wales: "united kingdom",
+  turkey: "turkiye", "south korea": "korea", "ivory coast": "cote d ivoire",
+  "czech republic": "czechia", burma: "myanmar", holland: "netherlands",
+  uae: "united arab emirates", drc: "democratic republic of the congo",
+  "east timor": "timor leste", vietnam: "viet nam", laos: "lao",
+};
+
+// Common cities and their countries, so most users only need to type a city.
+const CITY_COUNTRIES = Object.fromEntries(
+  (
+    "paris:france,lyon:france,marseille:france,london:united kingdom,manchester:united kingdom," +
+    "birmingham:united kingdom,glasgow:united kingdom,belfast:united kingdom,dublin:ireland," +
+    "berlin:germany,hamburg:germany,munich:germany,frankfurt:germany,madrid:spain,barcelona:spain," +
+    "lisbon:portugal,rome:italy,milan:italy,naples:italy,athens:greece,amsterdam:netherlands," +
+    "brussels:belgium,vienna:austria,zurich:switzerland,geneva:switzerland,stockholm:sweden," +
+    "oslo:norway,copenhagen:denmark,helsinki:finland,warsaw:poland,prague:czechia,budapest:hungary," +
+    "bucharest:romania,belgrade:serbia,sofia:bulgaria,kyiv:ukraine,kiev:ukraine,moscow:russia," +
+    "st petersburg:russia,tbilisi:georgia,yerevan:armenia,baku:azerbaijan,istanbul:turkiye,ankara:turkiye," +
+    "tel aviv:israel,jerusalem:israel,beirut:lebanon,amman:jordan,damascus:syria,baghdad:iraq," +
+    "tehran:iran,riyadh:saudi arabia,jeddah:saudi arabia,dubai:united arab emirates," +
+    "abu dhabi:united arab emirates,doha:qatar,kuwait city:kuwait,muscat:oman,sanaa:yemen,cairo:egypt," +
+    "alexandria:egypt,tunis:tunisia,algiers:algeria,tripoli:libya,casablanca:morocco,rabat:morocco," +
+    "khartoum:sudan,addis ababa:ethiopia,nairobi:kenya,mombasa:kenya,kampala:uganda,kigali:rwanda," +
+    "dar es salaam:tanzania,lagos:nigeria,abuja:nigeria,accra:ghana,dakar:senegal,abidjan:cote d ivoire," +
+    "kinshasa:democratic republic of the congo,luanda:angola,johannesburg:south africa," +
+    "cape town:south africa,durban:south africa,pretoria:south africa,harare:zimbabwe,maputo:mozambique," +
+    "antananarivo:madagascar,new york:united states,washington:united states,los angeles:united states," +
+    "chicago:united states,san francisco:united states,seattle:united states,boston:united states," +
+    "miami:united states,atlanta:united states,minneapolis:united states,houston:united states," +
+    "toronto:canada,montreal:canada,vancouver:canada,ottawa:canada,mexico city:mexico," +
+    "guadalajara:mexico,havana:cuba,port-au-prince:haiti,bogota:colombia,medellin:colombia," +
+    "caracas:venezuela,quito:ecuador,lima:peru,la paz:bolivia,santiago:chile,buenos aires:argentina," +
+    "sao paulo:brazil,rio de janeiro:brazil,brasilia:brazil,montevideo:uruguay,karachi:pakistan," +
+    "lahore:pakistan,islamabad:pakistan,kabul:afghanistan,delhi:india,new delhi:india,mumbai:india," +
+    "kolkata:india,chennai:india,bangalore:india,bengaluru:india,hyderabad:india,dhaka:bangladesh," +
+    "colombo:sri lanka,kathmandu:nepal,male:maldives,yangon:myanmar,mandalay:myanmar,bangkok:thailand," +
+    "chiang mai:thailand,phnom penh:cambodia,vientiane:lao,hanoi:viet nam,ho chi minh city:viet nam," +
+    "kuala lumpur:malaysia,johor bahru:malaysia,penang:malaysia,jakarta:indonesia,bali:indonesia," +
+    "denpasar:indonesia,surabaya:indonesia,manila:philippines,cebu:philippines,davao:philippines," +
+    "hong kong:hong kong,taipei:taiwan,beijing:china,shanghai:china,guangzhou:china,shenzhen:china," +
+    "chengdu:china,tokyo:japan,osaka:japan,seoul:korea,busan:korea,ulaanbaatar:mongolia," +
+    "sydney:australia,melbourne:australia,brisbane:australia,perth:australia,auckland:new zealand," +
+    "wellington:new zealand,port moresby:papua new guinea,noumea:new caledonia,suva:fiji"
+  )
+    .split(",")
+    .map((pair) => pair.split(":"))
+);
+
 // ---------------------------------------------------------------------------
 // Core logic (pure functions; also used by the tests and the command-line tool)
 // ---------------------------------------------------------------------------
@@ -81,10 +149,18 @@ function clamp(x, lo, hi) {
   return Math.min(hi, Math.max(lo, x));
 }
 
+// "City", "City | context" or "City | context | country".
+// The country (for the MFA check) is the third part, else the second part,
+// else looked up from CITY_COUNTRIES.
 function parseParam(raw) {
   const text = String(raw || "").trim() || CONFIG.defaultCity;
-  const [city, context] = text.split("|").map((s) => s.trim());
-  return { city: city || CONFIG.defaultCity, context: context || "" };
+  const [city, context, country] = text.split("|").map((s) => s.trim());
+  const c = city || CONFIG.defaultCity;
+  return {
+    city: c,
+    context: context || "",
+    country: country || context || CITY_COUNTRIES[c.toLowerCase()] || "",
+  };
 }
 
 function quoteTerm(s) {
@@ -215,6 +291,125 @@ function summarizeTimeline(json, now) {
   return { last24h, baseline, daily };
 }
 
+// ---- Singapore MFA travel advisories ----
+
+function normalizeName(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function mfaCountryName(country) {
+  const n = normalizeName(country);
+  return COUNTRY_ALIASES[n] || n;
+}
+
+function mfaCountryUrl(country) {
+  return MFA_BASE + mfaCountryName(country).replace(/ /g, "-") + "/";
+}
+
+function htmlToText(html) {
+  let h = String(html || "");
+  const main = /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(h) || /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(h);
+  if (main) h = main[1];
+  return decodeEntities(
+    h
+      .replace(/<(script|style|noscript|svg|nav|header|footer)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6]|tr|section|ul|ol)>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/[ \t ]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .trim();
+}
+
+// Finds the country's travel page among the links on MFA's index page.
+function findMfaCountryLink(indexHtml, country) {
+  const want = mfaCountryName(country);
+  const re = /<a\b[^>]*href="([^"]*travel-advisories-notices-and-visa-information\/([a-z0-9-]+)\/?)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let best = null;
+  let m;
+  while ((m = re.exec(indexHtml))) {
+    const slug = m[2].replace(/-/g, " ");
+    const text = normalizeName(decodeEntities(m[3].replace(/<[^>]+>/g, " ")));
+    let score = 0;
+    if (text === want || slug === want) score = 3;
+    else if (new RegExp(`(^| )${escapeRegex(want)}( |$)`).test(slug + " | " + text)) score = 2;
+    if (score > (best ? best.score : 0)) {
+      const href = m[1].startsWith("http") ? m[1] : "https://www.mfa.gov.sg" + (m[1].startsWith("/") ? "" : "/") + m[1];
+      best = { score, url: href };
+    }
+  }
+  return best ? best.url : null;
+}
+
+const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December";
+const DATE_RE = new RegExp(`\\b(\\d{1,2}) (${MONTHS}) (20\\d\\d)\\b`, "gi");
+
+function parseMfaPage(html, city, url) {
+  const text = htmlToText(html);
+  const result = { status: "unreadable", date: null, summary: "", mentionsCity: false, cityNote: "", url };
+  if (text.length < 200) return result;
+
+  const sentences = text.replace(/([.!?])\s+/g, "$1\n").split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  const rules = [
+    ["defer-all", /\bdefer all travel\b/i],
+    ["defer-non-essential", /\bdefer (all )?non-essential travel\b/i],
+    ["caution", /\b(exercise|remain|stay|be)( extra| heightened| increased| high degree of)? (caution|vigilant|vigilance|alert)\b|\bavoid (large )?(crowds|gatherings|protests|demonstrations)\b/i],
+    ["notice", /\btravel notice\b/i],
+  ];
+  let hit = null;
+  for (const [status, re] of rules) {
+    const s = sentences.find((x) => re.test(x));
+    if (s) {
+      hit = { status, sentence: s };
+      break;
+    }
+  }
+  result.status = hit ? hit.status : "none";
+  if (hit) result.summary = hit.sentence.length > 220 ? hit.sentence.slice(0, 217) + "…" : hit.sentence;
+  result.leave = /\b(leave|leaving|depart|departing)\b[^.]{0,80}\b(as soon as possible|immediately|while (it is )?still possible|commercial)/i.test(text);
+
+  // Date: the last date before the advisory sentence, else the first on the page.
+  const at = hit ? text.indexOf(hit.sentence) : text.length;
+  const dates = [...text.matchAll(DATE_RE)];
+  const before = dates.filter((d) => d.index <= at);
+  const d = before.length ? before[before.length - 1] : dates[0];
+  if (d) result.date = `${d[1]} ${d[2][0].toUpperCase()}${d[2].slice(1).toLowerCase()} ${d[3]}`;
+
+  const cityRe = new RegExp(`(^|[^a-z])${escapeRegex(city.toLowerCase())}([^a-z]|$)`, "i");
+  const citySentence = sentences.find((s) => cityRe.test(s));
+  result.mentionsCity = !!citySentence;
+  if (citySentence) result.cityNote = citySentence.length > 220 ? citySentence.slice(0, 217) + "…" : citySentence;
+  return result;
+}
+
+async function checkMfa({ city, country, fetchText }) {
+  if (!country) return { status: "unreadable", error: "No country set", url: MFA_BASE };
+  let url = mfaCountryUrl(country);
+  let html;
+  try {
+    html = await fetchText(url);
+  } catch (e) {
+    // The guessed address failed; look the country up on the index page.
+    const index = await fetchText(MFA_BASE);
+    url = findMfaCountryLink(index, country);
+    if (!url) throw new Error(`"${country}" not found on MFA site`);
+    html = await fetchText(url);
+  }
+  return parseMfaPage(html, city, url);
+}
+
+function mfaInfo(mfa) {
+  if (!mfa) return null;
+  const lvl = MFA_LEVELS[mfa.status] || MFA_LEVELS.unreadable;
+  return { ...lvl, short: mfa.date ? mfa.date.replace(/ 20\d\d$/, "").replace(/^(\d+ \w{3})\w*$/, "$1") : "" };
+}
+
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -288,6 +483,14 @@ function scoreReport(headlines, volume) {
   return Math.round(clamp(score, 0, 100));
 }
 
+// An official "defer travel" advisory sets a minimum score, higher when it names the city.
+function applyMfaFloor(score, mfa) {
+  if (!mfa) return score;
+  if (mfa.status === "defer-all") return Math.max(score, mfa.mentionsCity ? 55 : 35);
+  if (mfa.status === "defer-non-essential" && mfa.mentionsCity) return Math.max(score, 35);
+  return score;
+}
+
 async function settle(promise) {
   try {
     return { ok: true, value: await promise };
@@ -297,12 +500,19 @@ async function settle(promise) {
 }
 
 // fetchText(url) -> Promise<string>. Injected so this runs in Scriptable and Node.
-async function buildReport({ city, context = "", fetchText, now = new Date() }) {
+async function buildReport({ city, context = "", country = "", fetchText, now = new Date() }) {
   const errors = [];
-  const [timelineRes, rssRes] = await Promise.all([
+  const [timelineRes, rssRes, mfaRes] = await Promise.all([
     settle(fetchText(gdeltTimelineUrl(city, context)).then((t) => JSON.parse(t))),
     settle(fetchText(googleNewsRssUrl(city, context))),
+    country ? settle(checkMfa({ city, country, fetchText })) : Promise.resolve({ ok: true, value: null }),
   ]);
+
+  let mfa = mfaRes.value || null;
+  if (!mfaRes.ok) {
+    errors.push("MFA: " + mfaRes.error);
+    mfa = { status: "unreadable", error: mfaRes.error, url: MFA_BASE };
+  }
 
   let volume = null;
   if (timelineRes.ok) volume = summarizeTimeline(timelineRes.value, now);
@@ -324,7 +534,7 @@ async function buildReport({ city, context = "", fetchText, now = new Date() }) 
   }
 
   const headlines = prepareHeadlines(items, city, now);
-  const score = scoreReport(headlines, volume);
+  const score = applyMfaFloor(scoreReport(headlines, volume), mfa);
   const level = levelFor(score);
   const sources = new Set(headlines.map((h) => h.source)).size;
 
@@ -338,6 +548,8 @@ async function buildReport({ city, context = "", fetchText, now = new Date() }) 
     sources,
     headlines: headlines.slice(0, 10),
     volume,
+    country,
+    mfa,
     errors,
     link: googleNewsWebUrl(city, context),
     generatedAt: now.toISOString(),
@@ -445,11 +657,29 @@ function addScoreBlock(stack, report, trend, stale) {
   addText(stack, String(report.score), 40, { bold: true, color: report.color, lines: 1 });
   addText(stack, report.level.toUpperCase(), 14, { bold: true, color: report.color, lines: 1 });
   stack.addSpacer();
+  addMfaLine(stack, report);
   addText(stack, `${report.reports} reports · ${report.sources} sources`, 10, { alpha: 0.75, color: "#FFFFFF", lines: 1 });
   addText(stack, (stale ? "⚠︎ cached " : "Updated ") + formatTime(report.generatedAt), 10, {
     alpha: 0.6,
     color: stale ? "#FFCC00" : "#FFFFFF",
     lines: 1,
+  });
+}
+
+// One line such as "SG MFA: Defer all travel · 10 Jun". Tapping opens the MFA page.
+function addMfaLine(stack, report) {
+  const info = mfaInfo(report.mfa);
+  if (!info) return;
+  const row = stack.addStack();
+  row.centerAlignContent();
+  if (report.mfa.url) row.url = report.mfa.url;
+  const city = report.mfa.mentionsCity ? " ⚑" : "";
+  addText(row, "SG MFA: ", 10, { bold: true, alpha: 0.75, color: "#FFFFFF", lines: 1 });
+  addText(row, info.label + city + (info.short ? " · " + info.short : ""), 10, {
+    bold: true,
+    color: info.color,
+    lines: 1,
+    scale: 0.6,
   });
 }
 
@@ -475,7 +705,9 @@ function buildWidget(report, trend, stale) {
 
   // Lock screen widgets
   if (family === "accessoryInline") {
-    w.addText(`${report.city}: ${report.level} (${report.score}) ${trend.arrow}`);
+    const info = mfaInfo(report.mfa);
+    const mfa = info && info.rank >= 1 ? ` · MFA: ${info.label}` : "";
+    w.addText(`${report.city}: ${report.level} (${report.score})${trend.arrow ? " " + trend.arrow : ""}${mfa}`);
     return w;
   }
   if (family === "accessoryCircular") {
@@ -493,10 +725,16 @@ function buildWidget(report, trend, stale) {
   if (family === "accessoryRectangular") {
     const t = w.addText(`${report.city} · ${report.level} ${report.score} ${trend.arrow}`);
     t.font = Font.boldSystemFont(13);
+    const info = mfaInfo(report.mfa);
+    const showMfa = info && info.rank >= 2;
+    if (showMfa) {
+      const m = w.addText("SG MFA: " + info.label + (report.mfa.mentionsCity ? " ⚑" : ""));
+      m.font = Font.mediumSystemFont(11);
+    }
     const top = report.headlines[0];
     const h = w.addText(top ? top.title : "No unrest reports in last 24h");
     h.font = Font.systemFont(11);
-    h.lineLimit = 2;
+    h.lineLimit = showMfa ? 1 : 2;
     return w;
   }
 
@@ -536,6 +774,18 @@ function buildWidget(report, trend, stale) {
   }
 
   // Large
+  if (report.mfa && report.mfa.summary) {
+    w.addSpacer(8);
+    const box = w.addStack();
+    box.layoutVertically();
+    if (report.mfa.url) box.url = report.mfa.url;
+    addText(box, report.mfa.mentionsCity && report.mfa.cityNote ? report.mfa.cityNote : report.mfa.summary, 10, {
+      alpha: 0.8,
+      color: "#FFFFFF",
+      lines: 2,
+      scale: 0.85,
+    });
+  }
   if (report.volume) {
     w.addSpacer(8);
     addText(w, "Unrest coverage, last 7 days", 10, { alpha: 0.6, color: "#FFFFFF" });
@@ -584,6 +834,25 @@ async function showInApp(report, trend) {
     row.onSelect = () => Safari.open(h.url);
     table.addRow(row);
   }
+  if (report.mfa) {
+    const info = mfaInfo(report.mfa);
+    const row = new UITableRow();
+    row.height = 110;
+    const detail = [
+      report.mfa.date ? "Updated " + report.mfa.date : "",
+      report.mfa.mentionsCity ? `Mentions ${report.city}: ${report.mfa.cityNote}` : `Does not mention ${report.city}`,
+      report.mfa.summary,
+      report.mfa.error || "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const cell = row.addText(`Singapore MFA (${report.country}): ${info.label}`, detail);
+    cell.titleColor = new Color(info.color);
+    cell.subtitleFont = Font.systemFont(12);
+    row.dismissOnSelect = false;
+    row.onSelect = () => Safari.open(report.mfa.url || MFA_BASE);
+    table.addRow(row);
+  }
   if (report.errors.length) {
     const row = new UITableRow();
     row.addText("Some sources failed", report.errors.join("\n"));
@@ -597,21 +866,21 @@ async function main() {
   if (config.runsInApp && !param) {
     const a = new Alert();
     a.title = "City Unrest";
-    a.message = "Which city? Add context after | for ambiguous names, e.g. Portland | Oregon";
+    a.message = "Which city? Optionally add context and country: Portland | Oregon | United States";
     a.addTextField("City", CONFIG.defaultCity);
     a.addAction("Check");
     a.addCancelAction("Cancel");
     if ((await a.presentAlert()) === -1) return;
     param = a.textFieldValue(0);
   }
-  const { city, context } = parseParam(param);
-  const cache = cacheStore(city + (context ? "-" + context : ""));
+  const { city, context, country } = parseParam(param);
+  const cache = cacheStore([city, context, country].filter(Boolean).join("-"));
   const cached = cache.load() || { history: [] };
 
   let report;
   let stale = false;
   try {
-    report = await buildReport({ city, context, fetchText: scriptableFetch, now: new Date() });
+    report = await buildReport({ city, context, country, fetchText: scriptableFetch, now: new Date() });
   } catch (e) {
     if (!cached.report) {
       const w = errorWidget("Couldn't load reports. " + e.message);
@@ -655,6 +924,12 @@ if (IS_SCRIPTABLE) {
     trendFrom,
     buildReport,
     gdeltTimelineUrl,
+    parseMfaPage,
+    findMfaCountryLink,
+    mfaCountryUrl,
+    checkMfa,
+    applyMfaFloor,
+    htmlToText,
     googleNewsRssUrl,
   };
 }

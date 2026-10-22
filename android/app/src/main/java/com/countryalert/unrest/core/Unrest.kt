@@ -281,11 +281,50 @@ data class Headline(
 /** "[Translated] ..." for translated headlines, else the headline as written. */
 fun displayTitle(h: Headline): String = if (h.translated != null) "[Translated] " + h.translated else h.title
 
+// ---- Headlines about other countries ----
+// A city's name also turns up in stories about elsewhere, e.g. a capital
+// standing for its government ("Brasília condemns the crackdown in Caracas").
+// Headlines naming a foreign country, its people or one of its cities are
+// skipped. Names of the watched city and its own country are blanked out
+// first, so "Papua New Guinea" isn't read as "Guinea".
+
+private class ForeignMatchers(val own: List<Regex>, val foreign: List<Regex>)
+
+private val FOREIGN = java.util.concurrent.ConcurrentHashMap<String, ForeignMatchers>()
+
+private fun nameRegex(name: String) =
+    termRegex(name, if (NO_SPACE_SCRIPT.containsMatchIn(name)) "substring" else "word")
+
+private fun foreignMatchers(country: String, names: List<String>): ForeignMatchers {
+    val own = mfaCountryName(country)
+    return FOREIGN.getOrPut(own + "|" + names.joinToString("/") { fold(it) }) {
+        val ownTerms = (UnrestData.countryNames[own] ?: emptyList()) + names
+        val ownFolded = (ownTerms + UnrestData.notForeign).map { fold(it) }.toSet()
+        val terms = mutableListOf<String>()
+        for ((c, list) in UnrestData.countryNames) if (c != own) terms += list
+        for ((city, info) in UnrestData.cities) if (info.country != own) terms += listOf(city) + info.names
+        ForeignMatchers(
+            own = ownTerms.map { nameRegex(it) },
+            foreign = terms.filter { fold(it) !in ownFolded }.distinct().map { nameRegex(it) },
+        )
+    }
+}
+
+fun mentionsForeign(title: String, country: String, names: List<String>): Boolean {
+    val m = foreignMatchers(country, names)
+    var text = fold(title)
+    for (re in m.own) text = re.replace(text, " ")
+    return m.foreign.any { it.containsMatchIn(text) }
+}
+
 fun normalizeTitle(t: String) =
     fold(t).replace(Regex("[^\\p{L}\\p{N} ]"), "").replace(Regex("\\s+"), " ").trim().take(80)
 
-/** Keeps recent headlines, removes duplicates, rates each; most severe first. Headlines naming the city count double. */
-fun prepareHeadlines(items: List<Item>, names: List<String>, now: Long): List<Headline> {
+/**
+ * Keeps recent headlines that name the city and no other country, removes
+ * duplicates, rates each; most severe first. [names] are the city's spellings.
+ */
+fun prepareHeadlines(items: List<Item>, names: List<String>, now: Long, country: String = ""): List<Headline> {
     val cutoff = now - 24 * 3600 * 1000L
     val seen = HashSet<String>()
     val out = mutableListOf<Headline>()
@@ -294,11 +333,12 @@ fun prepareHeadlines(items: List<Item>, names: List<String>, now: Long): List<He
         if (it.date != null && it.date < cutoff) continue
         val key = normalizeTitle(it.title)
         if (key.isEmpty() || !seen.add(key)) continue
+        // The news search also matches articles that only name the city in the body.
+        if (!mentionsAny(it.title, names)) continue
+        if (mentionsForeign(it.title, country, names)) continue
         val r = rateHeadline(it.title, it.lang)
         if (r.severity == 0.0) continue
-        // Headlines that name the city count fully; others (matched on article body) count half.
-        val weight = r.severity * if (mentionsAny(it.title, names)) 1.0 else 0.5
-        out += Headline(it.title, it.source, it.url, it.date, r.severity, r.matched, weight, it.lang)
+        out += Headline(it.title, it.source, it.url, it.date, r.severity, r.matched, r.severity, it.lang)
     }
     return out.sortedWith(compareByDescending<Headline> { it.severity }.thenByDescending { it.date ?: 0L })
 }
@@ -414,11 +454,13 @@ fun buildReport(
         throw NoSourcesException("No sources reachable. " + errors.joinToString("; "))
     }
 
-    var headlines = prepareHeadlines(items, spellings, now)
+    var headlines = prepareHeadlines(items, spellings, now, country)
     var translationCache = emptyMap<String, String>()
     if (params.translate) {
-        val t = translateHeadlines(headlines.take(10), fetchText, translations)
-        headlines = t.headlines + headlines.drop(10)
+        val t = translateHeadlines(headlines.take(15), fetchText, translations)
+        // The English translation shows foreign names the original wording hid.
+        val kept = t.headlines.filter { it.translated == null || !mentionsForeign(it.translated, country, spellings) }
+        headlines = kept + headlines.drop(15)
         translationCache = t.cache
         t.error?.let { errors += it }
     }

@@ -90,7 +90,7 @@ class LanguagesTest {
     }
 
     @Test fun nonLatinHeadlinesArentMerged() {
-        val items = listOf(Item("東京で大規模なデモ", "A", "", null, "ja"), Item("香港で催涙ガス使用", "B", "", null, "ja"))
+        val items = listOf(Item("東京で大規模なデモ", "A", "", null, "ja"), Item("東京で催涙ガス使用", "B", "", null, "ja"))
         assertEquals(2, prepareHeadlines(items, listOf("Tokyo", "東京"), now).size)
     }
 
@@ -107,7 +107,8 @@ class LanguagesTest {
             }
         }, now)
         assertEquals(listOf("FR:fr", "US:en"), r.editions)
-        assertEquals(listOf("20 Minutes", "BFM", "Le Parisien"), r.headlines.filter { it.lang == "fr" }.map { it.source }.sorted())
+        // "Manifestation pacifique place de la République" doesn't name Paris, so it's skipped.
+        assertEquals(listOf("BFM", "Le Parisien"), r.headlines.filter { it.lang == "fr" }.map { it.source }.sorted())
         // Same inputs give 73 in the iPhone widget (test/languages.test.js).
         assertEquals(73, r.score)
         val frUrl = urls.first { "FR:fr" in it }

@@ -61,6 +61,15 @@ object UnrestData {
         o.mapValues { o.getJSONArray(it).strings() }
     }
 
+    /** English names and nationality words per country, for spotting news about other countries. */
+    val countryNames: Map<String, List<String>> by lazy {
+        val o = root.getJSONObject("countryNames")
+        o.mapValues { o.getJSONArray(it).strings() }
+    }
+
+    /** City names that are also everyday words or first names; never read as another country. */
+    val notForeign: List<String> by lazy { root.optJSONArray("notForeign").strings() }
+
     val aliases: Map<String, String> by lazy {
         val o = root.getJSONObject("aliases")
         o.mapValues { o.getString(it) }

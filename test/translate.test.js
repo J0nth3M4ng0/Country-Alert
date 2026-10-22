@@ -50,7 +50,7 @@ test("translates foreign headlines in one request and labels them", async () => 
   const r = await w.buildReport({ city: "Paris", country: "france", fetchText: newsFetch(fakeTranslator(ENGLISH, calls)), now: NOW });
   assert.strictEqual(calls.length, 1);
   const fr = r.headlines.filter((h) => h.lang === "fr");
-  assert.strictEqual(fr.length, 3);
+  assert.strictEqual(fr.length, 2);
   for (const h of fr) {
     assert.strictEqual(h.translated, ENGLISH[h.title]);
     assert.strictEqual(w.displayTitle(h), "[Translated] " + ENGLISH[h.title]);
@@ -63,7 +63,7 @@ test("translates foreign headlines in one request and labels them", async () => 
   }
   assert.strictEqual(r.score, 73); // translation doesn't change the score
   assert.deepStrictEqual(r.errors, []);
-  assert.strictEqual(Object.keys(r.translations).length, 3);
+  assert.strictEqual(Object.keys(r.translations).length, 2);
 });
 
 test("remembers translations between refreshes", async () => {

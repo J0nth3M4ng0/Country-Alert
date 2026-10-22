@@ -59,7 +59,7 @@ class TranslateTest {
         val r = buildReport(Params("Paris", country = "france"), newsFetch(fakeTranslator(calls)), now)
         assertEquals(1, calls.size)
         val fr = r.headlines.filter { it.lang == "fr" }
-        assertEquals(3, fr.size)
+        assertEquals(2, fr.size)
         for (h in fr) {
             assertEquals(english[h.title], h.translated)
             assertEquals("[Translated] " + english[h.title], displayTitle(h))
@@ -71,7 +71,7 @@ class TranslateTest {
         }
         assertEquals(73, r.score)
         assertTrue(r.errors.isEmpty())
-        assertEquals(3, r.translations.size)
+        assertEquals(2, r.translations.size)
     }
 
     @Test fun remembersTranslations() {

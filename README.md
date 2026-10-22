@@ -100,6 +100,11 @@ free, keyless sources:
   MFA's index page. If the page can't be read it says **Check MFA page**
   rather than claiming there is no advisory.
 
+Only headlines that name the city count. Headlines that also name another
+country, its people or one of its cities are skipped, so a capital's name
+used for its government ("Brasília condemns the crackdown in Caracas") doesn't
+count as unrest in that city. Translated headlines are checked again in English.
+
 The score combines headline severity (up to 50 points), the coverage spike (up
 to 30) and the absolute coverage volume (up to 20). Three or more severity-3
 headlines force at least **High**. An MFA "defer all travel" advisory sets a
@@ -120,6 +125,12 @@ Countries in other languages get English news only. Turn it off with the
 
 - Keyword-based: it measures *reporting about* unrest, not unrest itself.
   Big cities and anniversaries can inflate scores; unreported events won't show.
+- The "other country" check uses English country names plus city names in
+  several scripts. Without translation, a foreign country written only in the
+  local language (e.g. "Ucrânia") can slip through. It can also skip a local
+  story that happens to name another country.
+- GDELT's 7-day coverage count still includes articles that name the city
+  anywhere, so capitals can show slightly higher coverage.
 - MFA advisories are written per country. The ⚑ flag only means the city's
   name appears on the page.
 - The MFA reader depends on the wording and layout of mfa.gov.sg. If MFA

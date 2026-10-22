@@ -166,8 +166,10 @@ class UnrestWidget : AppWidgetProvider() {
 
             val mfa = report.mfa
             if (mfa != null) {
-                val flag = if (mfa.mentionsCity) " ⚑" else ""
-                val date = if (mfa.shortDate.isNotEmpty()) " · " + mfa.shortDate else ""
+                // The flag and date only mean something when there is an advisory or notice.
+                val active = mfa.status.rank >= 1
+                val flag = if (active && mfa.mentionsCity) " ⚑" else ""
+                val date = if (active && mfa.shortDate.isNotEmpty()) " · " + mfa.shortDate else ""
                 v.setViewVisibility(R.id.mfa, View.VISIBLE)
                 v.setTextViewText(R.id.mfa, "SG MFA: ${mfa.status.label}$flag$date")
                 v.setTextColor(R.id.mfa, color(mfa.status.color))

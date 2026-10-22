@@ -685,9 +685,12 @@ function addMfaLine(stack, report) {
   const row = stack.addStack();
   row.centerAlignContent();
   if (isMfaUrl(report.mfa.url)) row.url = report.mfa.url;
-  const city = report.mfa.mentionsCity ? " ⚑" : "";
+  // The flag and date only mean something when there is an advisory or notice.
+  const active = info.rank >= 1;
+  const city = active && report.mfa.mentionsCity ? " ⚑" : "";
+  const date = active && info.short ? " · " + info.short : "";
   addText(row, "SG MFA: ", 10, { bold: true, alpha: 0.75, color: "#FFFFFF", lines: 1 });
-  addText(row, info.label + city + (info.short ? " · " + info.short : ""), 10, {
+  addText(row, info.label + city + date, 10, {
     bold: true,
     color: info.color,
     lines: 1,

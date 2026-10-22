@@ -26,7 +26,7 @@ Portland | Oregon | United States
 ```
 
 - **Context** narrows the news search for cities that share a name.
-- **Country** is used for the MFA check. About 190 major cities are filled in
+- **Country** is used for the MFA check. About 170 major cities are filled in
   automatically; otherwise the context is tried, so `Lagos | Nigeria` also works.
 
 ## Android

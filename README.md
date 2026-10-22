@@ -34,9 +34,9 @@ Portland | Oregon | United States
 
 ## Android
 
-If you installed an earlier test version, uninstall it first: the app is now
-signed with a permanent key, and Android won't install it over the old one.
-Updates after this install normally.
+Each build is signed with a temporary key, so Android won't install a new
+version over an old one. **Uninstall the previous version first**, then install
+the new one. Your widgets and their cities are removed with it, so add them again.
 
 1. Download the APK: on GitHub open **Actions → Build → the latest run →
    Artifacts → city-unrest-android**, and unzip it.
@@ -146,21 +146,3 @@ score, so change them together.
 Android SDK (against Robolectric's copy of the framework). It's for
 environments where Google's Android downloads aren't available.
 
-## Android signing key
-
-Release APKs are signed with a permanent key so updates install over each
-other. The key is stored as two GitHub repository secrets, never in the code:
-
-| Secret | Contents |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | The keystore file, base64-encoded |
-| `ANDROID_KEYSTORE_PASSWORD` | Its password |
-
-Add them under **Settings → Secrets and variables → Actions → New repository
-secret**. Without them the build still works but signs with a temporary key
-(you'll see a warning in the build log). The "Show signing certificate" step
-of each build prints the key's SHA-256 fingerprint.
-
-Keep a private backup of the keystore and password (e.g. in a password
-manager). If they're lost, the next version can't be installed as an update;
-users would have to uninstall and reinstall.

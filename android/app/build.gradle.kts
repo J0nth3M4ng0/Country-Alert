@@ -15,26 +15,12 @@ android {
         versionName = "1.0"
     }
 
-    // Release signing key. GitHub Actions decodes it from the repository's
-    // ANDROID_KEYSTORE_BASE64 secret and passes its location here. Without it
-    // (forks, local builds) the APK is signed with a temporary debug key.
-    val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-    signingConfigs {
-        if (keystorePath != null) {
-            create("release") {
-                storeFile = file(keystorePath)
-                storeType = "PKCS12"
-                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias = "cityunrest"
-                keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            }
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName(if (keystorePath != null) "release" else "debug")
+            // Signed with a temporary debug key that changes on every build, so
+            // uninstall the old version before installing a new one.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

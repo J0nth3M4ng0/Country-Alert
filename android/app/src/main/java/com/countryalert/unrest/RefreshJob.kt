@@ -19,7 +19,8 @@ class RefreshJob : JobService() {
         val only = params.extras.getIntArray(EXTRA_IDS)
         Thread {
             val ids = only ?: allWidgetIds(this)
-            for (id in ids) refreshWidget(this, id)
+            // The backup job and the widget's own update only refresh stale widgets.
+            for (id in ids) refreshWidget(this, id, force = only != null)
             jobFinished(params, false)
         }.start()
         return true
@@ -29,8 +30,13 @@ class RefreshJob : JobService() {
 
     companion object {
         private const val EXTRA_IDS = "ids"
-        // Single-widget jobs use the widget id; this one refreshes every widget.
+        // Single-widget jobs use the widget id; these refresh every widget.
         private const val JOB_ALL = Int.MIN_VALUE
+        private const val JOB_PERIODIC = Int.MIN_VALUE + 1
+        private const val PERIOD_MS = 30 * 60 * 1000L
+
+        /** Skip automatic refreshes this soon after the last one. */
+        private const val MIN_GAP_MS = 10 * 60 * 1000L
 
         fun allWidgetIds(context: Context): IntArray =
             AppWidgetManager.getInstance(context)
@@ -59,10 +65,40 @@ class RefreshJob : JobService() {
             if (!ok && urgent) schedule(context, ids, urgent = false)
         }
 
-        /** Fetches a new report for one widget and redraws it. Call off the main thread. */
-        fun refreshWidget(context: Context, id: Int) {
+        /**
+         * Backup refresh every 30 minutes that survives restarts, alongside the
+         * widget's own update. Some phones delay one or the other.
+         */
+        fun schedulePeriodic(context: Context) {
+            val scheduler = context.getSystemService(JobScheduler::class.java) ?: return
+            if (scheduler.getPendingJob(JOB_PERIODIC) != null) return
+            val job = JobInfo.Builder(JOB_PERIODIC, ComponentName(context, RefreshJob::class.java))
+                .setPeriodic(PERIOD_MS)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setPersisted(true)
+                .build()
+            try {
+                scheduler.schedule(job)
+            } catch (e: Exception) {
+                // Keep going with the widget's own updates.
+            }
+        }
+
+        fun cancelPeriodic(context: Context) {
+            context.getSystemService(JobScheduler::class.java)?.cancel(JOB_PERIODIC)
+        }
+
+        /**
+         * Fetches a new report for one widget and redraws it. Call off the main
+         * thread. Unless [force], skips widgets refreshed in the last 10 minutes,
+         * since the widget update and the backup job can fire close together.
+         */
+        fun refreshWidget(context: Context, id: Int, force: Boolean = true) {
             val store = WidgetStore(context)
             val params = store.params(id) ?: return
+            val now = System.currentTimeMillis()
+            if (!force && now - store.lastAttempt(id) < MIN_GAP_MS) return
+            store.saveAttempt(id, now)
             try {
                 val previous = store.report(id)?.translations ?: emptyMap()
                 val report = buildReport(withDefaultCountry(params), ::httpGet, translations = previous)

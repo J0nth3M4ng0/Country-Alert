@@ -62,12 +62,16 @@ class WidgetStore(context: Context) {
             .apply()
     }
 
+    /** When a refresh last started, successful or not. */
+    fun lastAttempt(id: Int): Long = prefs.getLong("attempt_$id", 0)
+    fun saveAttempt(id: Int, t: Long) = prefs.edit().putLong("attempt_$id", t).apply()
+
     fun error(id: Int): String? = prefs.getString("error_$id", null)
     fun saveError(id: Int, msg: String) = prefs.edit().putString("error_$id", msg).apply()
 
     fun delete(id: Int) {
         prefs.edit().apply {
-            listOf("city", "names", "local", "translate", "context", "country", "report", "history", "error").forEach { remove("${it}_$id") }
+            listOf("city", "names", "local", "translate", "context", "country", "report", "history", "error", "attempt").forEach { remove("${it}_$id") }
         }.apply()
     }
 }

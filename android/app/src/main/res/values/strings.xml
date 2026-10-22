@@ -14,6 +14,7 @@
     <string name="hint_country">Filled in automatically for major cities</string>
     <string name="button_save">Save widget</string>
     <string name="button_check">Check now</string>
+    <string name="button_background">Allow background updates</string>
     <string name="checking">Checking news and MFA…</string>
     <string name="loading_widget">Loading the latest news for your widget… This screen closes when it\'s done.</string>
     <string name="error_city">Enter a city</string>

@@ -52,10 +52,12 @@ own about every 30 minutes. Long-press → **Reconfigure** (or tap a widget that
 says "Tap to set up") to change the city. Open the **City Unrest** app to check
 any city without adding a widget.
 
-If the widget stops updating on its own, set **Settings → Apps → City Unrest →
-Battery** to **Unrestricted**. Some phones (OnePlus, Samsung, Xiaomi) hold back
-background updates for apps installed outside the Play Store. Tapping **↻**
-still refreshes straight away.
+If the widget stops updating on its own, open the **City Unrest** app: it shows
+when each widget last updated, any problem, and whether the phone is limiting
+background updates. Tap **Allow background updates** if it appears. Some phones
+(OnePlus, Samsung, Xiaomi) hold back background work for apps installed outside
+the Play Store; on OnePlus also check **Settings → Apps → City Unrest → Battery
+→ Allow background activity**. Tapping **↻** always refreshes straight away.
 
 Requires Android 8.0 or newer. To build it yourself, open the `android/` folder
 in Android Studio, or run `./gradlew assembleRelease` there.

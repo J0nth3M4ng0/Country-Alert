@@ -29,8 +29,15 @@ class UnrestWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         for (id in ids) render(context, manager, id)
-        RefreshJob.schedule(context, ids)
+        RefreshJob.schedulePeriodic(context)
+        // Fetch now rather than queueing a job: some phones (e.g. OnePlus) hold
+        // queued background work back for hours.
+        refreshNow(context, ids, force = false)
     }
+
+    override fun onEnabled(context: Context) = RefreshJob.schedulePeriodic(context)
+
+    override fun onDisabled(context: Context) = RefreshJob.cancelPeriodic(context)
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
         render(context, manager, id)
@@ -47,9 +54,29 @@ class UnrestWidget : AppWidgetProvider() {
             val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 render(context, AppWidgetManager.getInstance(context), id, refreshing = true)
-                RefreshJob.schedule(context, intArrayOf(id), urgent = true)
+                refreshNow(context, intArrayOf(id), force = true)
             }
         }
+    }
+
+    /**
+     * Refreshes in a background thread while this broadcast is kept open.
+     * Android allows a broadcast only a few seconds, so after 8 seconds the
+     * broadcast is released; the download carries on while the app is alive.
+     */
+    private fun refreshNow(context: Context, ids: IntArray, force: Boolean) {
+        val pending = goAsync()
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val release = { if (done.compareAndSet(false, true)) pending.finish() }
+        val app = context.applicationContext
+        Thread {
+            try {
+                for (id in ids) RefreshJob.refreshWidget(app, id, force)
+            } finally {
+                release()
+            }
+        }.start()
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ release() }, 8_000)
     }
 
     private enum class Size { SMALL, MEDIUM, LARGE }

@@ -172,7 +172,9 @@ class UnrestWidget : AppWidgetProvider() {
             val trend = trendFrom(store.history(id), report)
             val accent = color(report.color)
             v.setInt(R.id.glow, "setColorFilter", accent)
-            v.setTextViewText(R.id.city, report.city.uppercase())
+            // Tapping the city name (marked ✎) opens setup to change the city.
+            v.setTextViewText(R.id.city, report.city.uppercase() + " ✎")
+            v.setOnClickPendingIntent(R.id.city, setupIntent(context, id))
             v.setTextViewText(R.id.trend, trend.arrow)
             v.setTextColor(R.id.trend, accent)
             v.setTextViewText(R.id.score, report.score.toString())

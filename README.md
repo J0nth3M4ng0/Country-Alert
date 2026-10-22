@@ -48,8 +48,8 @@ the new one. Your widgets and their cities are removed with it, so add them agai
 
 Tap the widget to open the news search, a headline to read it, the MFA line
 to open the MFA page, and **Updated … ↻** to refresh now. It refreshes on its
-own about every 30 minutes. Long-press → **Reconfigure** (or tap a widget that
-says "Tap to set up") to change the city. Open the **City Unrest** app to check
+own about every 30 minutes. Tap the city name (marked ✎), or long-press →
+**Reconfigure**, to change the city. Open the **City Unrest** app to check
 any city without adding a widget.
 
 If the widget stops updating on its own, open the **City Unrest** app: it shows

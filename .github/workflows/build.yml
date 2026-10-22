@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: 20
       - run: npm test
+      - run: node scripts/sync-data.js --check
 
   android-app:
     runs-on: ubuntu-latest
@@ -31,8 +32,28 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Load signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+            echo "Signing with the release key."
+          else
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret, so the APK is signed with a temporary key. See README."
+          fi
       - name: Test and build APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+      - name: Show signing certificate
+        run: |
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$tools/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -E "SHA-256|DN"
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.p12"
       - uses: actions/upload-artifact@v4
         with:
           name: city-unrest-android

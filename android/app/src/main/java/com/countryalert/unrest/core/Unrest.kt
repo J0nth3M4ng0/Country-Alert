@@ -2,6 +2,7 @@ package com.countryalert.unrest.core
 
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.text.Normalizer
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -18,41 +19,7 @@ import kotlin.math.roundToInt
 
 object Settings {
     var defaultCity = "Paris"
-    var newsLanguage = "en"
-    var newsCountry = "US"
 }
-
-/** Words that suggest unrest, by severity (3 = most severe). */
-val UNREST_TERMS: Map<Int, List<String>> = mapOf(
-    3 to listOf(
-        "killed", "dead", "deaths", "death toll", "shooting", "shot dead",
-        "gunfire", "gunmen", "explosion", "bombing", "martial law",
-        "state of emergency", "curfew", "coup", "massacre", "live ammunition",
-        "troops deployed", "army deployed", "lynching",
-    ),
-    2 to listOf(
-        "riot", "riots", "rioting", "rioters", "clash", "clashes", "clashed",
-        "tear gas", "teargas", "looting", "looted", "looters", "arson",
-        "set fire", "torched", "violent", "violence", "injured", "wounded",
-        "arrested", "arrests", "detained", "rubber bullets", "water cannon",
-        "barricade", "barricades", "unrest", "crackdown", "mob", "stampede",
-        "molotov", "vandalism", "uprising", "insurrection",
-    ),
-    1 to listOf(
-        "protest", "protests", "protested", "protesting", "protesters",
-        "protestors", "demonstration", "demonstrations", "demonstrators",
-        "marchers", "strike", "strikes", "general strike", "walkout", "blockade",
-        "blockades", "rally", "rallies", "sit-in", "picket", "boycott",
-        "shutdown", "hartal", "bandh", "unions", "dissent",
-    ),
-)
-
-val CALMING_TERMS = listOf("peaceful", "peacefully", "calm returns", "called off", "ends", "ended")
-
-val QUERY_TERMS = listOf(
-    "protest", "protesters", "riot", "clashes", "unrest", "curfew",
-    "\"tear gas\"", "demonstrators", "strike", "looting",
-)
 
 data class Level(val min: Int, val name: String, val color: String)
 
@@ -66,51 +33,105 @@ val LEVELS = listOf(
 
 fun levelFor(score: Int): Level = LEVELS.first { score >= it.min }
 
-data class Params(val city: String, val context: String = "", val country: String = "")
+/**
+ * What a widget watches. [names] are extra spellings typed after "/", e.g.
+ * "Moscow / Москва". [localNews] also reads the local-language news edition.
+ */
+data class Params(
+    val city: String,
+    val context: String = "",
+    val country: String = "",
+    val names: List<String> = emptyList(),
+    val localNews: Boolean = true,
+)
 
-/** "City", "City | context" or "City | context | country". */
+/** Lowercase without Latin, Greek or Cyrillic accents; other scripts keep their marks. */
+fun fold(s: String?): String =
+    Normalizer.normalize(s ?: "", Normalizer.Form.NFD).replace(ACCENTS, "").lowercase()
+
+private val ACCENTS = Regex("[\\u0300-\\u036f]")
+
+fun cityInfo(city: String): UnrestData.City? = UnrestData.cities[fold(city).trim()]
+
+/** "City", "City | context" or "City | context | country"; the city may list spellings after "/". */
 fun parseParam(raw: String?): Params {
     val text = raw?.trim().orEmpty().ifEmpty { Settings.defaultCity }
     val parts = text.split("|").map { it.trim() }
-    val city = parts.getOrNull(0).orEmpty().ifEmpty { Settings.defaultCity }
+    val spellings = parts[0].split("/").map { it.trim() }.filter { it.isNotEmpty() }
+    val city = spellings.firstOrNull() ?: Settings.defaultCity
     val context = parts.getOrNull(1).orEmpty()
     val country = parts.getOrNull(2).orEmpty()
         .ifEmpty { context }
-        .ifEmpty { CITY_COUNTRIES[city.lowercase()].orEmpty() }
-    return Params(city, context, country)
+        .ifEmpty { cityInfo(city)?.country.orEmpty() }
+    return Params(city, context, country, spellings.drop(1))
 }
 
 /** Fills in the country from the built-in city list when the user left it blank. */
 fun withDefaultCountry(p: Params): Params =
     if (p.country.isNotBlank()) p
-    else p.copy(country = p.context.ifBlank { CITY_COUNTRIES[p.city.lowercase()].orEmpty() })
+    else p.copy(country = p.context.ifBlank { cityInfo(p.city)?.country.orEmpty() })
+
+/** Every spelling to search for: the city, the user's extra names, built-in local names. */
+fun allNames(city: String, names: List<String> = emptyList()): List<String> {
+    val out = mutableListOf<String>()
+    for (n in listOf(city) + names + (cityInfo(city)?.names ?: emptyList())) {
+        if (out.none { fold(it) == fold(n) }) out += n
+    }
+    return out
+}
+
+/**
+ * Google News editions to read: the city's or country's local editions (up to
+ * two), plus the international English edition when none is English.
+ */
+fun editionsFor(city: String, country: String, localNews: Boolean = true): List<String> {
+    val local = if (!localNews) emptyList() else
+        (cityInfo(city)?.editions?.ifEmpty { null } ?: UnrestData.countries[mfaCountryName(country)] ?: emptyList())
+            .filter { it in UnrestData.editions }
+            .take(2)
+    val hasEnglish = local.any { UnrestData.editions.getValue(it).lang == "en" }
+    return if (hasEnglish) local else local + UnrestData.international
+}
 
 private fun quote(s: String) = "\"" + s.replace("\"", "") + "\""
 private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 
-private fun baseQuery(city: String, context: String) =
-    quote(city) + (if (context.isNotEmpty()) " " + quote(context) else "") +
-        " (" + QUERY_TERMS.joinToString(" OR ") + ")"
+private fun cityQuery(names: List<String>) =
+    if (names.size > 1) "(" + names.joinToString(" OR ") { quote(it) } + ")" else quote(names[0])
 
+private fun newsQuery(names: List<String>, context: String, lang: String): String {
+    val terms = UnrestData.languages.getValue(lang).query
+    return cityQuery(names) + (if (context.isNotEmpty()) " " + quote(context) else "") +
+        " (" + terms.joinToString(" OR ") + ")"
+}
+
+// GDELT translates foreign-language news, so English names and terms cover all languages.
 fun gdeltTimelineUrl(city: String, context: String) =
     "https://api.gdeltproject.org/api/v2/doc/doc?mode=timelinevolraw&format=json" +
-        "&timespan=7d&timelinesmooth=0&query=" + enc(baseQuery(city, context))
+        "&timespan=7d&timelinesmooth=0&query=" + enc(newsQuery(listOf(city), context, "en"))
 
 fun gdeltArticlesUrl(city: String, context: String) =
     "https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&format=json" +
-        "&timespan=24h&maxrecords=75&sort=datedesc&query=" + enc(baseQuery(city, context))
+        "&timespan=24h&maxrecords=75&sort=datedesc&query=" + enc(newsQuery(listOf(city), context, "en"))
 
-private fun newsEdition(): String {
-    val l = Settings.newsLanguage
-    val c = Settings.newsCountry
-    return "&hl=$l-$c&gl=$c&ceid=$c:$l"
+private fun editionParams(ceid: String): String {
+    val e = UnrestData.editions.getValue(ceid)
+    return "&hl=${e.hl}&gl=${e.gl}&ceid=$ceid"
 }
 
-fun googleNewsRssUrl(city: String, context: String) =
-    "https://news.google.com/rss/search?q=" + enc(baseQuery(city, context) + " when:1d") + newsEdition()
+/** English-language editions search the English name; local editions search all spellings. */
+private fun editionNames(names: List<String>, ceid: String) =
+    if (UnrestData.editions.getValue(ceid).lang == "en") names.take(1) else names
 
-fun googleNewsWebUrl(city: String, context: String) =
-    "https://news.google.com/search?q=" + enc(baseQuery(city, context) + " when:1d") + newsEdition()
+fun googleNewsRssUrl(names: List<String>, context: String, ceid: String): String {
+    val q = newsQuery(editionNames(names, ceid), context, UnrestData.editions.getValue(ceid).lang) + " when:1d"
+    return "https://news.google.com/rss/search?q=" + enc(q) + editionParams(ceid)
+}
+
+fun googleNewsWebUrl(names: List<String>, context: String, ceid: String = UnrestData.international): String {
+    val q = newsQuery(editionNames(names, ceid), context, UnrestData.editions.getValue(ceid).lang) + " when:1d"
+    return "https://news.google.com/search?q=" + enc(q) + editionParams(ceid)
+}
 
 private val GDELT_DATE = Regex("^(\\d{4})(\\d{2})(\\d{2})T?(\\d{2})?(\\d{2})?(\\d{2})?Z?$")
 
@@ -128,7 +149,7 @@ fun parseRssDate(s: String): Long? = try {
     null
 }
 
-data class Item(val title: String, val source: String, val url: String, val date: Long?)
+data class Item(val title: String, val source: String, val url: String, val date: Long?, val lang: String = "en")
 
 /** Minimal RSS parser for Google News. */
 fun parseRss(xml: String): List<Item> {
@@ -184,25 +205,63 @@ fun summarizeTimeline(json: String, now: Long): Volume? {
     return Volume(daily[6], daily.take(6).sum() / 6, daily.toList())
 }
 
-private data class TermPattern(val term: String, val weight: Int, val re: Regex)
+private const val NOT_LETTER = "[^\\p{L}\\p{M}\\p{N}]"
+private const val LETTER = "[\\p{L}\\p{M}\\p{N}]"
 
-private val TERM_PATTERNS = UNREST_TERMS.flatMap { (w, terms) -> terms.map { TermPattern(it, w, wordRegex(it)) } }
-    .sortedByDescending { it.weight }
-private val CALM_PATTERNS = CALMING_TERMS.map { wordRegex(it) }
+/**
+ * How a term must sit in a headline:
+ *   word      whole word (English, Vietnamese)
+ *   prefix    start of a word, any ending (inflected languages)
+ *   substring anywhere (Chinese, Japanese, Thai, Korean, Arabic, Hebrew)
+ */
+fun termRegex(term: String, mode: String): Regex {
+    val t = escapeRegex(fold(term))
+    return when (mode) {
+        "substring" -> Regex(t)
+        "prefix" -> Regex("(^|$NOT_LETTER)$t")
+        else -> Regex("(^|$NOT_LETTER)$t(?!$LETTER)")
+    }
+}
+
+private class TermPattern(val term: String, val weight: Int, val re: Regex)
+private class Matchers(val terms: List<TermPattern>, val calm: List<Regex>)
+
+private val MATCHERS = java.util.concurrent.ConcurrentHashMap<String, Matchers>()
+
+private fun matchersFor(lang: String): Matchers = MATCHERS.getOrPut(lang) {
+    val l = UnrestData.languages[lang] ?: UnrestData.languages.getValue("en")
+    Matchers(
+        terms = listOf(3, 2, 1).flatMap { w -> l.terms.getValue(w).map { TermPattern(it, w, termRegex(it, l.match)) } },
+        calm = l.calm.map { termRegex(it, l.match) },
+    )
+}
 
 data class Rating(val severity: Double, val matched: List<String>)
 
-fun rateHeadline(title: String): Rating {
+/** Rates a headline by its most severe term, in its own language and English. */
+fun rateHeadline(title: String, lang: String = "en"): Rating {
+    val text = fold(title)
+    val langs = if (lang == "en") listOf("en") else listOf(lang, "en")
     var severity = 0.0
     val matched = mutableListOf<String>()
-    for (p in TERM_PATTERNS) {
-        if (p.re.containsMatchIn(title)) {
-            matched += p.term
-            severity = max(severity, p.weight.toDouble())
+    for (l in langs) {
+        for (p in matchersFor(l).terms) {
+            if (p.re.containsMatchIn(text)) {
+                matched += p.term
+                severity = max(severity, p.weight.toDouble())
+            }
         }
     }
-    if (severity <= 1 && CALM_PATTERNS.any { it.containsMatchIn(title) }) severity *= 0.5
+    if (severity <= 1 && langs.any { l -> matchersFor(l).calm.any { it.containsMatchIn(text) } }) severity *= 0.5
     return Rating(severity, matched)
+}
+
+/** Scripts written without spaces between words, or with attached prefixes. */
+private val NO_SPACE_SCRIPT = Regex("[\\u0590-\\u06ff\\u0e00-\\u0e7f\\u3040-\\u30ff\\u3400-\\u9fff\\uac00-\\ud7af]")
+
+fun mentionsAny(title: String, names: List<String>): Boolean {
+    val text = fold(title)
+    return names.any { termRegex(it, if (NO_SPACE_SCRIPT.containsMatchIn(it)) "substring" else "prefix").containsMatchIn(text) }
 }
 
 data class Headline(
@@ -213,26 +272,27 @@ data class Headline(
     val severity: Double,
     val matched: List<String>,
     val weight: Double,
+    val lang: String = "en",
 )
 
-private fun normalizeTitle(t: String) =
-    t.lowercase().replace(Regex("[^a-z0-9 ]"), "").replace(Regex("\\s+"), " ").trim().take(80)
+fun normalizeTitle(t: String) =
+    fold(t).replace(Regex("[^\\p{L}\\p{N} ]"), "").replace(Regex("\\s+"), " ").trim().take(80)
 
-/** Keeps recent headlines, removes duplicates, rates each; most severe first. */
-fun prepareHeadlines(items: List<Item>, city: String, now: Long): List<Headline> {
+/** Keeps recent headlines, removes duplicates, rates each; most severe first. Headlines naming the city count double. */
+fun prepareHeadlines(items: List<Item>, names: List<String>, now: Long): List<Headline> {
     val cutoff = now - 24 * 3600 * 1000L
-    val cityRe = wordRegex(city.lowercase(), trailingBoundary = false)
     val seen = HashSet<String>()
     val out = mutableListOf<Headline>()
     for (it in items) {
         if (it.title.isEmpty()) continue
         if (it.date != null && it.date < cutoff) continue
-        if (!seen.add(normalizeTitle(it.title))) continue
-        val r = rateHeadline(it.title)
+        val key = normalizeTitle(it.title)
+        if (key.isEmpty() || !seen.add(key)) continue
+        val r = rateHeadline(it.title, it.lang)
         if (r.severity == 0.0) continue
         // Headlines that name the city count fully; others (matched on article body) count half.
-        val weight = r.severity * if (cityRe.containsMatchIn(it.title)) 1.0 else 0.5
-        out += Headline(it.title, it.source, it.url, it.date, r.severity, r.matched, weight)
+        val weight = r.severity * if (mentionsAny(it.title, names)) 1.0 else 0.5
+        out += Headline(it.title, it.source, it.url, it.date, r.severity, r.matched, weight, it.lang)
     }
     return out.sortedWith(compareByDescending<Headline> { it.severity }.thenByDescending { it.date ?: 0L })
 }
@@ -263,6 +323,7 @@ fun applyMfaFloor(score: Int, mfa: MfaResult?): Int = when {
 
 data class Report(
     val city: String,
+    val names: List<String>,
     val context: String,
     val country: String,
     val score: Int,
@@ -272,6 +333,7 @@ data class Report(
     val sources: Int,
     val headlines: List<Headline>,
     val volume: Volume?,
+    val editions: List<String>,
     val mfa: MfaResult?,
     val errors: List<String>,
     val link: String,
@@ -291,16 +353,21 @@ private fun <T> attempt(block: () -> T): Result<T> = try {
 
 private fun Throwable.short(): String = message ?: javaClass.simpleName
 
-/** Builds a report. Runs the three sources in parallel. Call off the main thread. */
+/** Builds a report, fetching all sources in parallel. Call off the main thread. */
 fun buildReport(params: Params, fetchText: FetchText, now: Long = System.currentTimeMillis()): Report {
-    val (city, context, country) = params
-    val pool = Executors.newFixedThreadPool(3)
+    val city = params.city
+    val context = params.context
+    val country = params.country
+    val spellings = allNames(city, params.names)
+    val editions = editionsFor(city, country, params.localNews)
+
+    val pool = Executors.newFixedThreadPool(2 + editions.size)
     val timelineF = pool.submit(Callable { attempt { summarizeTimeline(fetchText(gdeltTimelineUrl(city, context)), now) } })
-    val rssF = pool.submit(Callable { attempt { fetchText(googleNewsRssUrl(city, context)) } })
     val mfaF = pool.submit(Callable { if (country.isEmpty()) null else attempt { checkMfa(city, country, fetchText) } })
+    val feedFs = editions.map { ceid -> pool.submit(Callable { attempt { fetchText(googleNewsRssUrl(spellings, context, ceid)) } }) }
     val timelineRes = timelineF.get(60, TimeUnit.SECONDS)
-    val rssRes = rssF.get(60, TimeUnit.SECONDS)
     val mfaRes = mfaF.get(60, TimeUnit.SECONDS)
+    val feedRes = feedFs.map { it.get(60, TimeUnit.SECONDS) }
     pool.shutdown()
 
     val errors = mutableListOf<String>()
@@ -314,22 +381,32 @@ fun buildReport(params: Params, fetchText: FetchText, now: Long = System.current
 
     val volume = timelineRes.getOrElse { errors += "GDELT: " + it.short(); null }
 
-    var items: List<Item> = rssRes.fold({ parseRss(it) }, { errors += "Google News: " + it.short(); emptyList() })
-    // Fall back to GDELT's article list if Google News failed.
-    if (rssRes.isFailure) {
+    var items = mutableListOf<Item>()
+    feedRes.forEachIndexed { i, res ->
+        val ceid = editions[i]
+        res.fold(
+            { xml -> items += parseRss(xml).map { it.copy(lang = UnrestData.editions.getValue(ceid).lang) } },
+            { errors += "Google News ($ceid): " + it.short() },
+        )
+    }
+
+    // Fall back to GDELT's article list if every Google News feed failed.
+    if (feedRes.all { it.isFailure }) {
         items = attempt { parseGdeltArticles(fetchText(gdeltArticlesUrl(city, context))) }
             .getOrElse { errors += "GDELT articles: " + it.short(); emptyList() }
+            .toMutableList()
     }
 
     if (volume == null && items.isEmpty() && errors.isNotEmpty()) {
         throw NoSourcesException("No sources reachable. " + errors.joinToString("; "))
     }
 
-    val headlines = prepareHeadlines(items, city, now)
+    val headlines = prepareHeadlines(items, spellings, now)
     val score = applyMfaFloor(scoreReport(headlines, volume), mfa)
     val level = levelFor(score)
     return Report(
         city = city,
+        names = params.names,
         context = context,
         country = country,
         score = score,
@@ -339,9 +416,10 @@ fun buildReport(params: Params, fetchText: FetchText, now: Long = System.current
         sources = headlines.map { it.source }.toSet().size,
         headlines = headlines.take(10),
         volume = volume,
+        editions = editions,
         mfa = mfa,
         errors = errors,
-        link = googleNewsWebUrl(city, context),
+        link = googleNewsWebUrl(spellings, context),
         generatedAt = now,
     )
 }

@@ -13,7 +13,8 @@
  *
  * Sources (no API keys needed):
  *   - GDELT DOC 2.0 API: 7-day volume of unrest coverage mentioning the city
- *   - Google News RSS:   last-24h headlines, scored for severity
+ *   - Google News RSS:   last-24h headlines, scored for severity, from the
+ *                        city's local-language edition and in English
  *   - Singapore MFA:     the country's travel advisory / notice, and whether
  *                        it names the city
  *
@@ -26,47 +27,19 @@
 
 const CONFIG = {
   defaultCity: "Paris",
-  // Google News edition. Change for local-language coverage, e.g. "fr", "FR".
-  newsLanguage: "en",
-  newsCountry: "US",
+  // Also read news in the city's local language (e.g. French for Paris).
+  localNews: true,
   // Minutes before iOS is asked to refresh the widget (iOS may delay it).
   refreshMinutes: 30,
   requestTimeoutSeconds: 15,
 };
 
-// Words that suggest unrest, grouped by severity (3 = most severe).
-const UNREST_TERMS = {
-  3: [
-    "killed", "dead", "deaths", "death toll", "shooting", "shot dead",
-    "gunfire", "gunmen", "explosion", "bombing", "martial law",
-    "state of emergency", "curfew", "coup", "massacre", "live ammunition",
-    "troops deployed", "army deployed", "lynching",
-  ],
-  2: [
-    "riot", "riots", "rioting", "rioters", "clash", "clashes", "clashed",
-    "tear gas", "teargas", "looting", "looted", "looters", "arson",
-    "set fire", "torched", "violent", "violence", "injured", "wounded",
-    "arrested", "arrests", "detained", "rubber bullets", "water cannon",
-    "barricade", "barricades", "unrest", "crackdown", "mob", "stampede",
-    "molotov", "vandalism", "uprising", "insurrection",
-  ],
-  1: [
-    "protest", "protests", "protested", "protesting", "protesters",
-    "protestors", "demonstration", "demonstrations", "demonstrators",
-    "marchers", "strike", "strikes", "general strike", "walkout", "blockade",
-    "blockades", "rally", "rallies", "sit-in", "picket", "boycott",
-    "shutdown", "hartal", "bandh", "unions", "dissent",
-  ],
-};
-
-// Words that suggest a calm outcome; they soften low-severity headlines.
-const CALMING_TERMS = ["peaceful", "peacefully", "calm returns", "called off", "ends", "ended"];
-
-// Search terms used to find unrest coverage.
-const QUERY_TERMS = [
-  "protest", "protesters", "riot", "clashes", "unrest", "curfew",
-  "\"tear gas\"", "demonstrators", "strike", "looting",
-];
+// Search terms, unrest words in 21 languages, Google News editions and city
+// names. Copied from data/unrest-data.json by scripts/sync-data.js; edit that
+// file, not this block.
+// BEGIN GENERATED DATA
+const DATA = {"international":"US:en","languages":{"en":{"match":"word","query":["protest","protesters","riot","clashes","unrest","curfew","\"tear gas\"","demonstrators","strike","looting"],"terms":{"1":["protest","protests","protested","protesting","protesters","protestors","demonstration","demonstrations","demonstrators","marchers","strike","strikes","general strike","walkout","blockade","blockades","rally","rallies","sit-in","picket","boycott","shutdown","hartal","bandh","unions","dissent"],"2":["riot","riots","rioting","rioters","clash","clashes","clashed","tear gas","teargas","looting","looted","looters","arson","set fire","torched","violent","violence","injured","wounded","arrested","arrests","detained","rubber bullets","water cannon","barricade","barricades","unrest","crackdown","mob","stampede","molotov","vandalism","uprising","insurrection"],"3":["killed","dead","deaths","death toll","shooting","shot dead","gunfire","gunmen","explosion","bombing","martial law","state of emergency","curfew","coup","massacre","live ammunition","troops deployed","army deployed","lynching"]},"calm":["peaceful","peacefully","calm returns","called off","ends","ended"]},"fr":{"match":"prefix","query":["manifestation","manifestants","émeutes","affrontements","\"gaz lacrymogène\"","grève","\"couvre-feu\"","heurts","pillages"],"terms":{"1":["manifestation","manifestant","grève","grévistes","rassemblement","blocage","cortège","mobilisation","intersyndicale","boycott","sit-in"],"2":["émeute","affrontement","heurts","lacrymogène","pillage","pillé","incendi","violence","violent","blessé","interpell","arrestation","canon à eau","barricade","troubles","répression","casseurs","molotov","saccag","insurrection","soulèvement"],"3":["tué","morts","décès","fusillade","coups de feu","explosion","attentat","loi martiale","état d'urgence","couvre-feu","coup d'état","massacre","balles réelles","armée déployée"]},"calm":["pacifique","dans le calme","annulé"]},"es":{"match":"prefix","query":["protesta","manifestación","manifestantes","disturbios","enfrentamientos","\"gas lacrimógeno\"","huelga","\"toque de queda\"","saqueos"],"terms":{"1":["protesta","manifestación","manifestante","marcha","huelga","paro nacional","bloqueo","cacerolazo","movilización","boicot","plantón"],"2":["disturbio","enfrentamiento","choques","lacrimógeno","saqueo","saquea","incendi","violen","herido","detenid","arrestad","cañón de agua","barricada","represión","vandalismo","levantamiento","insurrección","estallido"],"3":["muert","fallecid","asesinad","tiroteo","disparos","balacera","explosión","atentado","ley marcial","estado de excepción","estado de emergencia","toque de queda","golpe de estado","masacre","militariz"]},"calm":["pacífic","en calma","desconvoca"]},"pt":{"match":"prefix","query":["protesto","manifestação","manifestantes","confronto","tumulto","\"gás lacrimogêneo\"","greve","\"toque de recolher\"","saques"],"terms":{"1":["protesto","manifestação","manifestante","passeata","greve","bloqueio","mobilização","boicote","panelaço","ocupação"],"2":["tumulto","distúrbio","confronto","lacrimog","saque","saquea","incêndi","incendi","violên","violent","ferido","detid","barricada","repressão","vandalismo","revolta","quebra-quebra"],"3":["mortos","morte","assassinad","tiroteio","disparos","baleado","explosão","atentado","lei marcial","estado de emergência","estado de sítio","toque de recolher","golpe de estado","massacre","chacina"]},"calm":["pacífic","tranquil","suspens"]},"de":{"match":"prefix","query":["Protest","Demonstration","Demonstranten","Ausschreitungen","Krawalle","Tränengas","Streik","Unruhen","Ausgangssperre"],"terms":{"1":["Protest","Demonstration","Demonstrant","Kundgebung","Streik","Warnstreik","Blockade","Mahnwache","Boykott","Großdemo"],"2":["Krawall","Ausschreitung","Zusammenstöße","Zusammenstoß","Tränengas","Plünder","Brandstift","angezündet","Gewalt","gewaltsam","verletzt","Festnahme","festgenommen","Wasserwerfer","Barrikade","Unruhen","Randale","Aufstand"],"3":["getötet","Tote","Todesopfer","erschossen","Schüsse","Schießerei","Explosion","Anschlag","Kriegsrecht","Ausnahmezustand","Ausgangssperre","Putsch","Massaker"]},"calm":["friedlich","abgesagt","ruhig"]},"it":{"match":"prefix","query":["protesta","manifestazione","manifestanti","scontri","corteo","sciopero","lacrimogeni","coprifuoco","disordini"],"terms":{"1":["protest","manifestazione","manifestant","corteo","sciopero","presidio","sit-in","mobilitazione","boicott"],"2":["scontri","guerriglia","lacrimogen","saccheggi","incendi","violen","ferit","arrest","idranti","barricat","disordini","tafferugli","rivolta","molotov","devastazion"],"3":["morti","morto","uccis","sparatoria","spari","esplosione","attentato","legge marziale","stato di emergenza","coprifuoco","colpo di stato","strage","massacro"]},"calm":["pacific","senza incidenti","revocat"]},"ru":{"match":"prefix","query":["протест","митинг","беспорядки","столкновения","забастовка","демонстрация","задержаны","\"комендантский час\""],"terms":{"1":["протест","митинг","демонстрац","демонстрант","забастов","стачк","пикет","акция протеста","шестви","бойкот","перекры"],"2":["беспоряд","столкновен","слезоточив","мародер","поджог","подожгли","насили","ранен","пострадав","задержан","арест","водомет","баррикад","волнени","разгон","бунт","восстани","погром"],"3":["погиб","убит","жертв","стрельб","расстрел","взрыв","теракт","военное положение","чрезвычайное положение","режим ЧС","комендантский час","переворот","резн"]},"calm":["мирн","спокойн","отменен"]},"uk":{"match":"prefix","query":["протест","мітинг","заворушення","сутички","страйк","демонстрація","затримані","\"комендантська година\""],"terms":{"1":["протест","мітинг","демонстрац","страйк","пікет","акція протесту","бойкот","перекри"],"2":["заворушен","сутичк","зіткнен","сльозогінн","мародер","підпал","насильств","поранен","постраждал","затриман","арешт","водомет","барикад","бунт","повстан","погром"],"3":["загин","вбит","убит","жертв","стрілянин","вибух","теракт","воєнний стан","надзвичайний стан","комендантська година","переворот"]},"calm":["мирн","спокійн","скасова"]},"tr":{"match":"prefix","query":["protesto","eylem","gösteri","çatışma","\"biber gazı\"","gözaltı","grev","\"sokağa çıkma yasağı\""],"terms":{"1":["protesto","eylem","gösteri","yürüyüş","grev","miting","boykot","oturma eylemi","direniş"],"2":["çatışma","arbede","biber gazı","göz yaşartıcı","yağma","kundak","ateşe ver","şiddet","yaralan","gözaltı","tutuklan","tazyikli su","barikat","isyan","ayaklanma","provokas"],"3":["öldü","hayatını kaybet","öldürül","silahlı saldırı","ateş açıl","patlama","bombalı","sıkıyönetim","olağanüstü hal","sokağa çıkma yasağı","darbe","katliam"]},"calm":["barışçıl","sakin","iptal"]},"ar":{"match":"substring","query":["احتجاجات","مظاهرات","اشتباكات","شغب","متظاهرين","\"حظر التجول\"","إضراب","\"الغاز المسيل للدموع\""],"terms":{"1":["احتجاج","مظاهرة","مظاهرات","تظاهرة","متظاهر","محتجين","المحتجين","إضراب","اعتصام","وقفة احتجاجية","عصيان مدني"],"2":["شغب","اشتباكات","اشتباك","الغاز المسيل","نهب","إحراق","عنف","جرحى","اعتقال","خراطيم المياه","اضطرابات","قمع","انتفاضة","فوضى"],"3":["قتلى","قتيل","مقتل","مصرع","إطلاق نار","إطلاق النار","انفجار","تفجير","الأحكام العرفية","حالة الطوارئ","حظر التجول","حظر تجول","انقلاب","مجزرة","الرصاص الحي"]},"calm":["سلمي","الهدوء","إلغاء"]},"he":{"match":"substring","query":["הפגנה","מפגינים","מחאה","מהומות","עימותים","שביתה","\"גז מדמיע\""],"terms":{"1":["הפגנה","הפגנות","מפגינים","מחאה","מחאת","שביתה","עצרת","צעדה","חסימת","חסמו"],"2":["מהומות","עימותים","עימות","גז מדמיע","ביזה","הצתה","הציתו","אלימות","פצועים","נפצעו","נעצרו","מעצרים","תותח מים"],"3":["נהרגו","נהרג","הרוגים","יריות","פיצוץ","פיגוע","מצב חירום","הפיכה","טבח"]},"calm":["בשקט","בוטל"]},"id":{"match":"prefix","query":["demo","\"unjuk rasa\"","demonstrasi","kerusuhan","ricuh","bentrok","\"gas air mata\"","mogok"],"terms":{"1":["demonstrasi","unjuk rasa","aksi demo","pengunjuk rasa","massa aksi","mogok","blokade","long march","boikot"],"2":["kerusuhan","ricuh","bentrok","gas air mata","penjarahan","dijarah","dibakar","pembakaran","kekerasan","terluka","luka-luka","ditangkap","diamankan","water cannon","barikade","anarkis","huru-hara","amuk"],"3":["tewas","meninggal","korban jiwa","penembakan","ditembak","ledakan","bom","darurat militer","keadaan darurat","jam malam","kudeta","pembantaian"]},"calm":["damai","kondusif","batal"]},"th":{"match":"substring","query":["ประท้วง","ชุมนุม","ม็อบ","ปะทะ","จลาจล","\"แก๊สน้ำตา\"","\"สลายการชุมนุม\""],"terms":{"1":["ประท้วง","ชุมนุม","เดินขบวน","นัดหยุดงาน","ม็อบ","ปิดถนน","คว่ำบาตร"],"2":["จลาจล","ปะทะ","แก๊สน้ำตา","ปล้นสะดม","เผา","ความรุนแรง","บาดเจ็บ","จับกุม","ควบคุมตัว","รถฉีดน้ำ","สลายการชุมนุม","ความไม่สงบ","กระสุนยาง"],"3":["เสียชีวิต","ยิง","ระเบิด","กฎอัยการศึก","ภาวะฉุกเฉิน","เคอร์ฟิว","รัฐประหาร","สังหาร"]},"calm":["อย่างสงบ","อย่างสันติ","ยกเลิก"]},"vi":{"match":"word","query":["\"biểu tình\"","\"bạo loạn\"","\"đụng độ\"","\"đình công\"","\"hơi cay\"","\"giới nghiêm\""],"terms":{"1":["biểu tình","tuần hành","đình công","phong tỏa","tẩy chay","tụ tập"],"2":["bạo loạn","đụng độ","hơi cay","cướp phá","đốt phá","bạo lực","bị thương","bắt giữ","vòi rồng","bất ổn","trấn áp","nổi dậy"],"3":["thiệt mạng","tử vong","chết","nổ súng","xả súng","vụ nổ","đánh bom","thiết quân luật","tình trạng khẩn cấp","giới nghiêm","đảo chính","thảm sát"]},"calm":["ôn hòa","hủy bỏ"]},"ja":{"match":"substring","query":["デモ","抗議","暴動","衝突","催涙ガス","ストライキ","戒厳令"],"terms":{"1":["抗議","デモ","集会","ストライキ","座り込み","封鎖","ボイコット"],"2":["暴動","衝突","催涙","略奪","放火","暴力","負傷","逮捕","拘束","放水","バリケード","騒乱","弾圧","蜂起"],"3":["死亡","死者","殺害","銃撃","発砲","爆発","爆弾","戒厳令","非常事態","夜間外出禁止","外出禁止令","クーデター","虐殺"]},"calm":["平和的","沈静","中止"]},"ko":{"match":"substring","query":["시위","집회","폭동","충돌","파업","최루탄","계엄"],"terms":{"1":["시위","집회","파업","농성","행진","봉쇄","보이콧","규탄"],"2":["폭동","충돌","최루탄","최루가스","약탈","방화","폭력","부상자","체포","연행","물대포","바리케이드","소요","진압","봉기"],"3":["사망","숨져","숨진","총격","발포","폭발","폭탄","계엄","비상사태","통행금지","쿠데타","학살"]},"calm":["평화적","평화롭게","취소"]},"zh":{"match":"substring","query":["抗議","抗议","示威","遊行","游行","衝突","冲突","罷工","罢工","催淚","催泪"],"terms":{"1":["抗議","抗议","示威","遊行","游行","集會","集会","罷工","罢工","靜坐","静坐","杯葛","抵制"],"2":["暴動","暴动","暴亂","暴乱","衝突","冲突","催淚","催泪","搶劫","抢劫","縱火","纵火","暴力","受傷","受伤","逮捕","拘捕","水炮","水砲","騷亂","骚乱","鎮壓","镇压","起義","起义"],"3":["死亡","喪生","丧生","罹難","遇难","槍擊","枪击","開槍","开枪","爆炸","戒嚴","戒严","緊急狀態","紧急状态","宵禁","政變","政变","屠殺","屠杀"]},"calm":["和平","平靜","平静","取消"]},"hi":{"match":"prefix","query":["प्रदर्शन","हिंसा","झड़प","दंगा","हड़ताल","\"आंसू गैस\"","कर्फ्यू","पथराव"],"terms":{"1":["प्रदर्शन","प्रदर्शनकारी","विरोध प्रदर्शन","धरना","हड़ताल","रैली","बहिष्कार","चक्का जाम"],"2":["दंगा","दंगे","हिंसा","हिंसक","झड़प","आंसू गैस","लूटपाट","आगजनी","घायल","गिरफ्तार","हिरासत","वाटर कैनन","बवाल","उपद्रव","पथराव","लाठीचार्ज","अशांति"],"3":["मौत","मारे गए","हत्या","गोलीबारी","फायरिंग","विस्फोट","धमाका","मार्शल लॉ","आपातकाल","कर्फ्यू","तख्तापलट","नरसंहार"]},"calm":["शांतिपूर्ण","रद्द"]},"el":{"match":"prefix","query":["διαδήλωση","διαδηλωτές","επεισόδια","απεργία","δακρυγόνα","συλλαλητήριο"],"terms":{"1":["διαδήλωσ","διαδηλωτ","συλλαλητήρι","απεργ","κινητοποιήσ","κατάληψ","μποϊκοτάζ"],"2":["επεισόδι","συμπλοκ","δακρυγόνα","λεηλασί","εμπρησμ","βία","τραυματ","συλλήψ","συνελήφθ","αύρα","οδόφραγμ","ταραχ","μολότοφ","εξέγερσ"],"3":["νεκρ","σκοτώθηκ","πυροβολισμ","έκρηξη","βόμβα","στρατιωτικός νόμος","κατάσταση έκτακτης ανάγκης","απαγόρευση κυκλοφορίας","πραξικόπημα","σφαγή"]},"calm":["ειρηνικ","ήρεμ","ακυρώθηκ"]},"pl":{"match":"prefix","query":["protest","demonstracja","manifestacja","zamieszki","starcia","strajk","\"gaz łzawiący\""],"terms":{"1":["protest","demonstracj","demonstrant","manifestacj","strajk","pikiet","blokad","bojkot"],"2":["zamieszki","starci","gaz łzawiący","grabież","podpal","przemoc","ranny","ranni","zatrzyman","aresztowan","armatki wodn","barykad","rozruch","niepokoje","powstani"],"3":["zginęł","zabit","ofiar","strzelanin","wybuch","eksplozj","zamach","stan wojenny","stan wyjątkowy","godzina policyjna","przewrót","masakr"]},"calm":["pokojow","spokojn","odwołan"]},"nl":{"match":"prefix","query":["protest","demonstratie","betoging","rellen","traangas","staking","onrust","avondklok"],"terms":{"1":["protest","demonstratie","demonstrant","betoging","betoger","staking","blokkade","boycot","manifestatie"],"2":["rellen","relschoppers","ongeregeldheden","botsing","traangas","plunder","brandstichting","in brand gestoken","geweld","gewond","gearresteerd","aanhouding","opgepakt","waterkanon","barricade","onrust","opstand"],"3":["doden","gedood","omgekomen","schietpartij","beschoten","explosie","aanslag","staat van beleg","noodtoestand","avondklok","staatsgreep","bloedbad"]},"calm":["vreedzaam","rustig","afgelast"]}},"editions":{"US:en":{"hl":"en-US","gl":"US","lang":"en"},"GB:en":{"hl":"en-GB","gl":"GB","lang":"en"},"IE:en":{"hl":"en-IE","gl":"IE","lang":"en"},"AU:en":{"hl":"en-AU","gl":"AU","lang":"en"},"NZ:en":{"hl":"en-NZ","gl":"NZ","lang":"en"},"CA:en":{"hl":"en-CA","gl":"CA","lang":"en"},"IN:en":{"hl":"en-IN","gl":"IN","lang":"en"},"KE:en":{"hl":"en-KE","gl":"KE","lang":"en"},"NG:en":{"hl":"en-NG","gl":"NG","lang":"en"},"ZA:en":{"hl":"en-ZA","gl":"ZA","lang":"en"},"GH:en":{"hl":"en-GH","gl":"GH","lang":"en"},"UG:en":{"hl":"en-UG","gl":"UG","lang":"en"},"TZ:en":{"hl":"en-TZ","gl":"TZ","lang":"en"},"ZW:en":{"hl":"en-ZW","gl":"ZW","lang":"en"},"PK:en":{"hl":"en-PK","gl":"PK","lang":"en"},"BD:en":{"hl":"en-BD","gl":"BD","lang":"en"},"PH:en":{"hl":"en-PH","gl":"PH","lang":"en"},"SG:en":{"hl":"en-SG","gl":"SG","lang":"en"},"MY:en":{"hl":"en-MY","gl":"MY","lang":"en"},"ET:en":{"hl":"en-ET","gl":"ET","lang":"en"},"IL:en":{"hl":"en-IL","gl":"IL","lang":"en"},"FR:fr":{"hl":"fr","gl":"FR","lang":"fr"},"BE:fr":{"hl":"fr","gl":"BE","lang":"fr"},"CH:fr":{"hl":"fr-CH","gl":"CH","lang":"fr"},"CA:fr":{"hl":"fr-CA","gl":"CA","lang":"fr"},"MA:fr":{"hl":"fr","gl":"MA","lang":"fr"},"SN:fr":{"hl":"fr","gl":"SN","lang":"fr"},"DE:de":{"hl":"de","gl":"DE","lang":"de"},"AT:de":{"hl":"de-AT","gl":"AT","lang":"de"},"CH:de":{"hl":"de-CH","gl":"CH","lang":"de"},"ES:es":{"hl":"es","gl":"ES","lang":"es"},"US:es-419":{"hl":"es-419","gl":"US","lang":"es"},"MX:es-419":{"hl":"es-419","gl":"MX","lang":"es"},"AR:es-419":{"hl":"es-419","gl":"AR","lang":"es"},"CO:es-419":{"hl":"es-419","gl":"CO","lang":"es"},"CL:es-419":{"hl":"es-419","gl":"CL","lang":"es"},"PE:es-419":{"hl":"es-419","gl":"PE","lang":"es"},"VE:es-419":{"hl":"es-419","gl":"VE","lang":"es"},"CU:es-419":{"hl":"es-419","gl":"CU","lang":"es"},"BR:pt-419":{"hl":"pt-BR","gl":"BR","lang":"pt"},"PT:pt-150":{"hl":"pt-PT","gl":"PT","lang":"pt"},"IT:it":{"hl":"it","gl":"IT","lang":"it"},"RU:ru":{"hl":"ru","gl":"RU","lang":"ru"},"UA:uk":{"hl":"uk","gl":"UA","lang":"uk"},"TR:tr":{"hl":"tr","gl":"TR","lang":"tr"},"EG:ar":{"hl":"ar","gl":"EG","lang":"ar"},"SA:ar":{"hl":"ar","gl":"SA","lang":"ar"},"AE:ar":{"hl":"ar","gl":"AE","lang":"ar"},"LB:ar":{"hl":"ar","gl":"LB","lang":"ar"},"IL:he":{"hl":"he","gl":"IL","lang":"he"},"ID:id":{"hl":"id","gl":"ID","lang":"id"},"TH:th":{"hl":"th","gl":"TH","lang":"th"},"VN:vi":{"hl":"vi","gl":"VN","lang":"vi"},"JP:ja":{"hl":"ja","gl":"JP","lang":"ja"},"KR:ko":{"hl":"ko","gl":"KR","lang":"ko"},"TW:zh-Hant":{"hl":"zh-TW","gl":"TW","lang":"zh"},"HK:zh-Hant":{"hl":"zh-HK","gl":"HK","lang":"zh"},"CN:zh-Hans":{"hl":"zh-CN","gl":"CN","lang":"zh"},"IN:hi":{"hl":"hi","gl":"IN","lang":"hi"},"GR:el":{"hl":"el","gl":"GR","lang":"el"},"PL:pl":{"hl":"pl","gl":"PL","lang":"pl"},"NL:nl":{"hl":"nl","gl":"NL","lang":"nl"},"BE:nl":{"hl":"nl","gl":"BE","lang":"nl"}},"countries":{"united states":["US:en"],"united kingdom":["GB:en"],"ireland":["IE:en"],"australia":["AU:en"],"new zealand":["NZ:en"],"canada":["CA:en"],"india":["IN:hi","IN:en"],"kenya":["KE:en"],"nigeria":["NG:en"],"south africa":["ZA:en"],"ghana":["GH:en"],"uganda":["UG:en"],"tanzania":["TZ:en"],"zimbabwe":["ZW:en"],"pakistan":["PK:en"],"bangladesh":["BD:en"],"philippines":["PH:en"],"singapore":["SG:en"],"malaysia":["MY:en"],"ethiopia":["ET:en"],"israel":["IL:he","IL:en"],"france":["FR:fr"],"belgium":["BE:fr","BE:nl"],"switzerland":["CH:de"],"morocco":["MA:fr","EG:ar"],"senegal":["SN:fr"],"algeria":["FR:fr","EG:ar"],"tunisia":["FR:fr","EG:ar"],"cote d ivoire":["FR:fr"],"haiti":["FR:fr"],"democratic republic of the congo":["FR:fr"],"madagascar":["FR:fr"],"new caledonia":["FR:fr"],"germany":["DE:de"],"austria":["AT:de"],"spain":["ES:es"],"mexico":["MX:es-419"],"argentina":["AR:es-419"],"colombia":["CO:es-419"],"chile":["CL:es-419"],"peru":["PE:es-419"],"venezuela":["VE:es-419"],"cuba":["CU:es-419"],"ecuador":["US:es-419"],"bolivia":["US:es-419"],"uruguay":["US:es-419"],"brazil":["BR:pt-419"],"portugal":["PT:pt-150"],"angola":["PT:pt-150"],"mozambique":["PT:pt-150"],"italy":["IT:it"],"russia":["RU:ru"],"ukraine":["UA:uk"],"turkiye":["TR:tr"],"egypt":["EG:ar"],"saudi arabia":["SA:ar"],"united arab emirates":["AE:ar"],"lebanon":["LB:ar"],"jordan":["EG:ar"],"syria":["LB:ar"],"iraq":["EG:ar"],"qatar":["SA:ar"],"kuwait":["SA:ar"],"oman":["SA:ar"],"yemen":["SA:ar"],"libya":["EG:ar"],"sudan":["EG:ar"],"indonesia":["ID:id"],"thailand":["TH:th"],"viet nam":["VN:vi"],"japan":["JP:ja"],"korea":["KR:ko"],"taiwan":["TW:zh-Hant"],"hong kong":["HK:zh-Hant"],"china":["CN:zh-Hans"],"greece":["GR:el"],"poland":["PL:pl"],"netherlands":["NL:nl"]},"aliases":{"usa":"united states","us":"united states","america":"united states","uk":"united kingdom","britain":"united kingdom","great britain":"united kingdom","england":"united kingdom","scotland":"united kingdom","wales":"united kingdom","turkey":"turkiye","south korea":"korea","ivory coast":"cote d ivoire","czech republic":"czechia","burma":"myanmar","holland":"netherlands","uae":"united arab emirates","drc":"democratic republic of the congo","east timor":"timor leste","vietnam":"viet nam","laos":"lao"},"cities":{"paris":{"country":"france"},"lyon":{"country":"france"},"marseille":{"country":"france"},"london":{"country":"united kingdom"},"manchester":{"country":"united kingdom"},"birmingham":{"country":"united kingdom"},"glasgow":{"country":"united kingdom"},"belfast":{"country":"united kingdom"},"dublin":{"country":"ireland"},"berlin":{"country":"germany"},"hamburg":{"country":"germany"},"munich":{"country":"germany","names":["München"]},"frankfurt":{"country":"germany"},"madrid":{"country":"spain"},"barcelona":{"country":"spain"},"lisbon":{"country":"portugal","names":["Lisboa"]},"rome":{"country":"italy","names":["Roma"]},"milan":{"country":"italy","names":["Milano"]},"naples":{"country":"italy","names":["Napoli"]},"athens":{"country":"greece","names":["Αθήνα","Αθήνας"]},"amsterdam":{"country":"netherlands","editions":["NL:nl"]},"brussels":{"country":"belgium","names":["Bruxelles","Brussel"],"editions":["BE:fr"]},"vienna":{"country":"austria","names":["Wien"]},"zurich":{"country":"switzerland","names":["Zürich"]},"geneva":{"country":"switzerland","names":["Genève"],"editions":["CH:fr"]},"stockholm":{"country":"sweden"},"oslo":{"country":"norway"},"copenhagen":{"country":"denmark"},"helsinki":{"country":"finland"},"warsaw":{"country":"poland","names":["Warszawa","Warszawie"]},"prague":{"country":"czechia"},"budapest":{"country":"hungary"},"bucharest":{"country":"romania"},"belgrade":{"country":"serbia"},"sofia":{"country":"bulgaria"},"kyiv":{"country":"ukraine","names":["Київ","Києві","Києва","Киев"]},"kiev":{"country":"ukraine","names":["Київ","Києві","Києва","Киев"]},"moscow":{"country":"russia","names":["Москва","Москве","Москвы","Москву"]},"st petersburg":{"country":"russia","names":["Петербург","Петербурге"]},"tbilisi":{"country":"georgia"},"yerevan":{"country":"armenia"},"baku":{"country":"azerbaijan"},"istanbul":{"country":"turkiye","names":["İstanbul"]},"ankara":{"country":"turkiye"},"tel aviv":{"country":"israel","names":["תל אביב"]},"jerusalem":{"country":"israel","names":["ירושלים"]},"beirut":{"country":"lebanon","names":["بيروت"]},"amman":{"country":"jordan"},"damascus":{"country":"syria","names":["دمشق"]},"baghdad":{"country":"iraq","names":["بغداد"]},"tehran":{"country":"iran"},"riyadh":{"country":"saudi arabia","names":["الرياض"]},"jeddah":{"country":"saudi arabia","names":["جدة"]},"dubai":{"country":"united arab emirates","names":["دبي"]},"abu dhabi":{"country":"united arab emirates","names":["أبوظبي","أبو ظبي"]},"doha":{"country":"qatar","names":["الدوحة"]},"kuwait city":{"country":"kuwait"},"muscat":{"country":"oman","names":["مسقط"]},"sanaa":{"country":"yemen","names":["صنعاء"]},"cairo":{"country":"egypt","names":["القاهرة"]},"alexandria":{"country":"egypt","names":["الإسكندرية"]},"tunis":{"country":"tunisia","names":["تونس"]},"algiers":{"country":"algeria","names":["Alger","الجزائر"]},"tripoli":{"country":"libya","names":["طرابلس"]},"casablanca":{"country":"morocco","names":["الدار البيضاء"]},"rabat":{"country":"morocco","names":["الرباط"]},"khartoum":{"country":"sudan","names":["الخرطوم"]},"addis ababa":{"country":"ethiopia"},"nairobi":{"country":"kenya"},"mombasa":{"country":"kenya"},"kampala":{"country":"uganda"},"kigali":{"country":"rwanda"},"dar es salaam":{"country":"tanzania"},"lagos":{"country":"nigeria"},"abuja":{"country":"nigeria"},"accra":{"country":"ghana"},"dakar":{"country":"senegal"},"abidjan":{"country":"cote d ivoire","names":["Abidjan"]},"kinshasa":{"country":"democratic republic of the congo","names":["Kinshasa"]},"luanda":{"country":"angola"},"johannesburg":{"country":"south africa"},"cape town":{"country":"south africa"},"durban":{"country":"south africa"},"pretoria":{"country":"south africa"},"harare":{"country":"zimbabwe"},"maputo":{"country":"mozambique"},"antananarivo":{"country":"madagascar"},"new york":{"country":"united states"},"washington":{"country":"united states"},"los angeles":{"country":"united states"},"chicago":{"country":"united states"},"san francisco":{"country":"united states"},"seattle":{"country":"united states"},"boston":{"country":"united states"},"miami":{"country":"united states"},"atlanta":{"country":"united states"},"minneapolis":{"country":"united states"},"houston":{"country":"united states"},"toronto":{"country":"canada"},"montreal":{"country":"canada","names":["Montréal"],"editions":["CA:fr"]},"vancouver":{"country":"canada"},"ottawa":{"country":"canada"},"mexico city":{"country":"mexico","names":["Ciudad de México","CDMX"]},"guadalajara":{"country":"mexico"},"havana":{"country":"cuba","names":["La Habana"]},"port-au-prince":{"country":"haiti","names":["Port-au-Prince"]},"bogota":{"country":"colombia","names":["Bogotá"]},"medellin":{"country":"colombia","names":["Medellín"]},"caracas":{"country":"venezuela"},"quito":{"country":"ecuador"},"lima":{"country":"peru"},"la paz":{"country":"bolivia"},"santiago":{"country":"chile"},"buenos aires":{"country":"argentina"},"sao paulo":{"country":"brazil","names":["São Paulo"]},"rio de janeiro":{"country":"brazil"},"brasilia":{"country":"brazil","names":["Brasília"]},"montevideo":{"country":"uruguay"},"karachi":{"country":"pakistan"},"lahore":{"country":"pakistan"},"islamabad":{"country":"pakistan"},"kabul":{"country":"afghanistan"},"delhi":{"country":"india","names":["दिल्ली"]},"new delhi":{"country":"india","names":["नई दिल्ली","दिल्ली"]},"mumbai":{"country":"india","names":["मुंबई"]},"kolkata":{"country":"india","names":["कोलकाता"]},"chennai":{"country":"india","names":["चेन्नई"]},"bangalore":{"country":"india","names":["बेंगलुरु"]},"bengaluru":{"country":"india","names":["बेंगलुरु"]},"hyderabad":{"country":"india","names":["हैदराबाद"]},"dhaka":{"country":"bangladesh"},"colombo":{"country":"sri lanka"},"kathmandu":{"country":"nepal"},"male":{"country":"maldives"},"yangon":{"country":"myanmar"},"mandalay":{"country":"myanmar"},"bangkok":{"country":"thailand","names":["กรุงเทพ"]},"chiang mai":{"country":"thailand","names":["เชียงใหม่"]},"phnom penh":{"country":"cambodia"},"vientiane":{"country":"lao"},"hanoi":{"country":"viet nam","names":["Hà Nội"]},"ho chi minh city":{"country":"viet nam","names":["TP.HCM","Hồ Chí Minh","Sài Gòn"]},"kuala lumpur":{"country":"malaysia"},"johor bahru":{"country":"malaysia"},"penang":{"country":"malaysia"},"jakarta":{"country":"indonesia"},"bali":{"country":"indonesia"},"denpasar":{"country":"indonesia"},"surabaya":{"country":"indonesia"},"manila":{"country":"philippines"},"cebu":{"country":"philippines"},"davao":{"country":"philippines"},"hong kong":{"country":"hong kong","names":["香港"]},"taipei":{"country":"taiwan","names":["台北","臺北"]},"beijing":{"country":"china","names":["北京"]},"shanghai":{"country":"china","names":["上海"]},"guangzhou":{"country":"china","names":["广州","廣州"]},"shenzhen":{"country":"china","names":["深圳"]},"chengdu":{"country":"china","names":["成都"]},"tokyo":{"country":"japan","names":["東京"]},"osaka":{"country":"japan","names":["大阪"]},"seoul":{"country":"korea","names":["서울"]},"busan":{"country":"korea","names":["부산"]},"ulaanbaatar":{"country":"mongolia"},"sydney":{"country":"australia"},"melbourne":{"country":"australia"},"brisbane":{"country":"australia"},"perth":{"country":"australia"},"auckland":{"country":"new zealand"},"wellington":{"country":"new zealand"},"port moresby":{"country":"papua new guinea"},"noumea":{"country":"new caledonia"},"suva":{"country":"fiji"}}};
+// END GENERATED DATA
 
 const LEVELS = [
   { min: 75, name: "Severe", color: "#FF3B30" },
@@ -89,58 +62,6 @@ const MFA_LEVELS = {
   unreadable: { label: "Check MFA page", color: "#8E8E93", rank: -1 },
 };
 
-// Other names for countries, mapped to the words MFA uses.
-const COUNTRY_ALIASES = {
-  usa: "united states", us: "united states", america: "united states",
-  uk: "united kingdom", britain: "united kingdom", "great britain": "united kingdom",
-  england: "united kingdom", scotland: "united kingdom", wales: "united kingdom",
-  turkey: "turkiye", "south korea": "korea", "ivory coast": "cote d ivoire",
-  "czech republic": "czechia", burma: "myanmar", holland: "netherlands",
-  uae: "united arab emirates", drc: "democratic republic of the congo",
-  "east timor": "timor leste", vietnam: "viet nam", laos: "lao",
-};
-
-// Common cities and their countries, so most users only need to type a city.
-const CITY_COUNTRIES = Object.fromEntries(
-  (
-    "paris:france,lyon:france,marseille:france,london:united kingdom,manchester:united kingdom," +
-    "birmingham:united kingdom,glasgow:united kingdom,belfast:united kingdom,dublin:ireland," +
-    "berlin:germany,hamburg:germany,munich:germany,frankfurt:germany,madrid:spain,barcelona:spain," +
-    "lisbon:portugal,rome:italy,milan:italy,naples:italy,athens:greece,amsterdam:netherlands," +
-    "brussels:belgium,vienna:austria,zurich:switzerland,geneva:switzerland,stockholm:sweden," +
-    "oslo:norway,copenhagen:denmark,helsinki:finland,warsaw:poland,prague:czechia,budapest:hungary," +
-    "bucharest:romania,belgrade:serbia,sofia:bulgaria,kyiv:ukraine,kiev:ukraine,moscow:russia," +
-    "st petersburg:russia,tbilisi:georgia,yerevan:armenia,baku:azerbaijan,istanbul:turkiye,ankara:turkiye," +
-    "tel aviv:israel,jerusalem:israel,beirut:lebanon,amman:jordan,damascus:syria,baghdad:iraq," +
-    "tehran:iran,riyadh:saudi arabia,jeddah:saudi arabia,dubai:united arab emirates," +
-    "abu dhabi:united arab emirates,doha:qatar,kuwait city:kuwait,muscat:oman,sanaa:yemen,cairo:egypt," +
-    "alexandria:egypt,tunis:tunisia,algiers:algeria,tripoli:libya,casablanca:morocco,rabat:morocco," +
-    "khartoum:sudan,addis ababa:ethiopia,nairobi:kenya,mombasa:kenya,kampala:uganda,kigali:rwanda," +
-    "dar es salaam:tanzania,lagos:nigeria,abuja:nigeria,accra:ghana,dakar:senegal,abidjan:cote d ivoire," +
-    "kinshasa:democratic republic of the congo,luanda:angola,johannesburg:south africa," +
-    "cape town:south africa,durban:south africa,pretoria:south africa,harare:zimbabwe,maputo:mozambique," +
-    "antananarivo:madagascar,new york:united states,washington:united states,los angeles:united states," +
-    "chicago:united states,san francisco:united states,seattle:united states,boston:united states," +
-    "miami:united states,atlanta:united states,minneapolis:united states,houston:united states," +
-    "toronto:canada,montreal:canada,vancouver:canada,ottawa:canada,mexico city:mexico," +
-    "guadalajara:mexico,havana:cuba,port-au-prince:haiti,bogota:colombia,medellin:colombia," +
-    "caracas:venezuela,quito:ecuador,lima:peru,la paz:bolivia,santiago:chile,buenos aires:argentina," +
-    "sao paulo:brazil,rio de janeiro:brazil,brasilia:brazil,montevideo:uruguay,karachi:pakistan," +
-    "lahore:pakistan,islamabad:pakistan,kabul:afghanistan,delhi:india,new delhi:india,mumbai:india," +
-    "kolkata:india,chennai:india,bangalore:india,bengaluru:india,hyderabad:india,dhaka:bangladesh," +
-    "colombo:sri lanka,kathmandu:nepal,male:maldives,yangon:myanmar,mandalay:myanmar,bangkok:thailand," +
-    "chiang mai:thailand,phnom penh:cambodia,vientiane:lao,hanoi:viet nam,ho chi minh city:viet nam," +
-    "kuala lumpur:malaysia,johor bahru:malaysia,penang:malaysia,jakarta:indonesia,bali:indonesia," +
-    "denpasar:indonesia,surabaya:indonesia,manila:philippines,cebu:philippines,davao:philippines," +
-    "hong kong:hong kong,taipei:taiwan,beijing:china,shanghai:china,guangzhou:china,shenzhen:china," +
-    "chengdu:china,tokyo:japan,osaka:japan,seoul:korea,busan:korea,ulaanbaatar:mongolia," +
-    "sydney:australia,melbourne:australia,brisbane:australia,perth:australia,auckland:new zealand," +
-    "wellington:new zealand,port moresby:papua new guinea,noumea:new caledonia,suva:fiji"
-  )
-    .split(",")
-    .map((pair) => pair.split(":"))
-);
-
 // ---------------------------------------------------------------------------
 // Core logic (pure functions; also used by the tests and the command-line tool)
 // ---------------------------------------------------------------------------
@@ -161,60 +82,100 @@ function clamp(x, lo, hi) {
   return Math.min(hi, Math.max(lo, x));
 }
 
+// Lowercase without accents, so "Bogotá" matches "BOGOTA". Only Latin, Greek
+// and Cyrillic accents are removed; marks that other scripts need are kept.
+function fold(s) {
+  return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function cityInfo(city) {
+  return DATA.cities[fold(city).trim()] || null;
+}
+
 // "City", "City | context" or "City | context | country".
-// The country (for the MFA check) is the third part, else the second part,
-// else looked up from CITY_COUNTRIES.
+// The city may list other spellings after "/", e.g. "Moscow / Москва".
+// The country (for the MFA check and local news) is the third part, else
+// the second part, else looked up from the built-in city list.
 function parseParam(raw) {
   const text = String(raw || "").trim() || CONFIG.defaultCity;
-  const [city, context, country] = text.split("|").map((s) => s.trim());
+  const [cityPart, context, country] = text.split("|").map((s) => s.trim());
+  const [city, ...names] = (cityPart || CONFIG.defaultCity).split("/").map((s) => s.trim()).filter(Boolean);
   const c = city || CONFIG.defaultCity;
+  const info = cityInfo(c);
   return {
     city: c,
+    names,
     context: context || "",
-    country: country || context || CITY_COUNTRIES[c.toLowerCase()] || "",
+    country: country || context || (info ? info.country : ""),
   };
+}
+
+// Every spelling to search for: the city, the user's extra names, built-in local names.
+function allNames(city, names = []) {
+  const info = cityInfo(city);
+  const out = [city, ...names, ...((info && info.names) || [])];
+  return out.filter((n, i) => out.findIndex((m) => fold(m) === fold(n)) === i);
+}
+
+// Google News editions to read: the city's or country's local editions
+// (up to two), plus the international English edition when none is English.
+function editionsFor(city, country, localNews = CONFIG.localNews) {
+  const info = cityInfo(city);
+  let local = [];
+  if (localNews) {
+    local = (info && info.editions) || DATA.countries[mfaCountryName(country)] || [];
+    local = local.filter((e) => DATA.editions[e]).slice(0, 2);
+  }
+  const hasEnglish = local.some((e) => DATA.editions[e].lang === "en");
+  return hasEnglish ? local : [...local, DATA.international];
 }
 
 function quoteTerm(s) {
   return `"${s.replace(/"/g, "")}"`;
 }
 
+function cityQuery(names) {
+  return names.length > 1 ? `(${names.map(quoteTerm).join(" OR ")})` : quoteTerm(names[0]);
+}
+
+function newsQuery(names, context, lang) {
+  const terms = DATA.languages[lang].query;
+  return `${cityQuery(names)}${context ? " " + quoteTerm(context) : ""} (${terms.join(" OR ")})`;
+}
+
+// GDELT translates foreign-language news, so English names and terms cover all languages.
 function gdeltTimelineUrl(city, context) {
-  const q = `${quoteTerm(city)}${context ? " " + quoteTerm(context) : ""} (${QUERY_TERMS.join(" OR ")})`;
   return (
     "https://api.gdeltproject.org/api/v2/doc/doc?mode=timelinevolraw&format=json" +
-    "&timespan=7d&timelinesmooth=0&query=" + encodeURIComponent(q)
+    "&timespan=7d&timelinesmooth=0&query=" + encodeURIComponent(newsQuery([city], context, "en"))
   );
 }
 
 function gdeltArticlesUrl(city, context) {
-  const q = `${quoteTerm(city)}${context ? " " + quoteTerm(context) : ""} (${QUERY_TERMS.join(" OR ")})`;
   return (
     "https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&format=json" +
-    "&timespan=24h&maxrecords=75&sort=datedesc&query=" + encodeURIComponent(q)
+    "&timespan=24h&maxrecords=75&sort=datedesc&query=" + encodeURIComponent(newsQuery([city], context, "en"))
   );
 }
 
-function googleNewsQuery(city, context) {
-  return `${quoteTerm(city)}${context ? " " + quoteTerm(context) : ""} (${QUERY_TERMS.join(" OR ")}) when:1d`;
+function editionParams(ceid) {
+  const e = DATA.editions[ceid];
+  return `&hl=${e.hl}&gl=${e.gl}&ceid=${ceid}`;
 }
 
-function googleNewsRssUrl(city, context) {
-  const lang = CONFIG.newsLanguage;
-  const country = CONFIG.newsCountry;
-  return (
-    "https://news.google.com/rss/search?q=" + encodeURIComponent(googleNewsQuery(city, context)) +
-    `&hl=${lang}-${country}&gl=${country}&ceid=${country}:${lang}`
-  );
+// English-language editions search the English name; local editions search all spellings.
+function editionNames(names, ceid) {
+  return DATA.editions[ceid].lang === "en" ? names.slice(0, 1) : names;
 }
 
-function googleNewsWebUrl(city, context) {
-  const lang = CONFIG.newsLanguage;
-  const country = CONFIG.newsCountry;
-  return (
-    "https://news.google.com/search?q=" + encodeURIComponent(googleNewsQuery(city, context)) +
-    `&hl=${lang}-${country}&gl=${country}&ceid=${country}:${lang}`
-  );
+function googleNewsRssUrl(names, context, ceid) {
+  const q = newsQuery(editionNames(names, ceid), context, DATA.editions[ceid].lang) + " when:1d";
+  return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + editionParams(ceid);
+}
+
+function googleNewsWebUrl(names, context, ceid = DATA.international) {
+  const q = newsQuery(editionNames(names, ceid), context, DATA.editions[ceid].lang) + " when:1d";
+  return "https://news.google.com/search?q=" + encodeURIComponent(q) + editionParams(ceid);
 }
 
 // GDELT dates look like 20261022T101500Z.
@@ -316,7 +277,7 @@ function normalizeName(s) {
 
 function mfaCountryName(country) {
   const n = normalizeName(country);
-  return COUNTRY_ALIASES[n] || n;
+  return DATA.aliases[n] || n;
 }
 
 function mfaCountryUrl(country) {
@@ -426,49 +387,81 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const TERM_PATTERNS = Object.keys(UNREST_TERMS).flatMap((w) =>
-  UNREST_TERMS[w].map((term) => ({
-    term,
-    weight: Number(w),
-    re: new RegExp(`(^|[^a-z])${escapeRegex(term)}([^a-z]|$)`, "i"),
-  }))
-);
-const CALM_PATTERNS = CALMING_TERMS.map((t) => new RegExp(`(^|[^a-z])${escapeRegex(t)}([^a-z]|$)`, "i"));
+// Letters and the marks attached to them; anything else separates words.
+const LETTER = "[\\p{L}\\p{M}\\p{N}]";
 
-function rateHeadline(title) {
+// How a term must sit in a headline:
+//   word      whole word (English, Vietnamese)
+//   prefix    start of a word, any ending (inflected languages)
+//   substring anywhere (Chinese, Japanese, Thai, Korean, Arabic, Hebrew)
+function termRegex(term, mode) {
+  const t = escapeRegex(fold(term));
+  if (mode === "substring") return new RegExp(t, "u");
+  if (mode === "prefix") return new RegExp(`(^|[^\\p{L}\\p{M}\\p{N}])${t}`, "u");
+  return new RegExp(`(^|[^\\p{L}\\p{M}\\p{N}])${t}(?!${LETTER})`, "u");
+}
+
+const MATCHERS = {};
+function matchersFor(lang) {
+  if (!MATCHERS[lang]) {
+    const L = DATA.languages[lang] || DATA.languages.en;
+    MATCHERS[lang] = {
+      terms: ["3", "2", "1"].flatMap((w) =>
+        L.terms[w].map((term) => ({ term, weight: Number(w), re: termRegex(term, L.match) }))
+      ),
+      calm: L.calm.map((t) => termRegex(t, L.match)),
+    };
+  }
+  return MATCHERS[lang];
+}
+
+// Rates a headline by its most severe term, in its own language and English.
+function rateHeadline(title, lang = "en") {
+  const text = fold(title);
+  const langs = lang === "en" ? ["en"] : [lang, "en"];
   let severity = 0;
   const matched = [];
-  for (const p of TERM_PATTERNS) {
-    if (p.re.test(title)) {
-      matched.push(p.term);
-      severity = Math.max(severity, p.weight);
+  for (const l of langs) {
+    for (const p of matchersFor(l).terms) {
+      if (p.re.test(text)) {
+        matched.push(p.term);
+        severity = Math.max(severity, p.weight);
+      }
     }
   }
-  if (severity <= 1 && CALM_PATTERNS.some((re) => re.test(title))) severity *= 0.5;
+  if (severity <= 1 && langs.some((l) => matchersFor(l).calm.some((re) => re.test(text)))) severity *= 0.5;
   return { severity, matched };
 }
 
-function normalizeTitle(t) {
-  return t.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
+// Scripts written without spaces between words, or with attached prefixes.
+const NO_SPACE_SCRIPT = /[֐-ۿ฀-๿぀-ヿ㐀-鿿가-힯]/;
+
+function mentionsAny(title, names) {
+  const text = fold(title);
+  return names.some((n) => termRegex(n, NO_SPACE_SCRIPT.test(n) ? "substring" : "prefix").test(text));
 }
 
-// Keeps recent headlines that mention the city, removes duplicates, rates each.
-function prepareHeadlines(items, city, now) {
+function normalizeTitle(t) {
+  return fold(t).replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+// Keeps recent headlines, removes duplicates, rates each; most severe first.
+// `names` are the city's spellings; headlines naming it count double.
+function prepareHeadlines(items, names, now) {
+  if (typeof names === "string") names = [names];
   const cutoff = now.getTime() - 24 * 3600 * 1000;
-  const cityRe = new RegExp(`(^|[^a-z])${escapeRegex(city.toLowerCase())}`, "i");
   const seen = new Set();
   const out = [];
   for (const it of items) {
     if (!it.title) continue;
     if (it.date && it.date.getTime() < cutoff) continue;
     const key = normalizeTitle(it.title);
-    if (seen.has(key)) continue;
+    if (!key || seen.has(key)) continue;
     seen.add(key);
-    const rating = rateHeadline(it.title);
+    const rating = rateHeadline(it.title, it.lang || "en");
     if (rating.severity === 0) continue;
     // Headlines that name the city count fully; others (matched on article body) count half.
-    const mentionsCity = cityRe.test(it.title);
-    out.push({ ...it, ...rating, weight: rating.severity * (mentionsCity ? 1 : 0.5) });
+    out.push({ ...it, ...rating, weight: rating.severity * (mentionsAny(it.title, names) ? 1 : 0.5) });
   }
   out.sort((a, b) => b.severity - a.severity || (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
   return out;
@@ -512,12 +505,14 @@ async function settle(promise) {
 }
 
 // fetchText(url) -> Promise<string>. Injected so this runs in Scriptable and Node.
-async function buildReport({ city, context = "", country = "", fetchText, now = new Date() }) {
+async function buildReport({ city, names = [], context = "", country = "", localNews = CONFIG.localNews, fetchText, now = new Date() }) {
   const errors = [];
-  const [timelineRes, rssRes, mfaRes] = await Promise.all([
+  const spellings = allNames(city, names);
+  const editions = editionsFor(city, country, localNews);
+  const [timelineRes, mfaRes, ...feedRes] = await Promise.all([
     settle(fetchText(gdeltTimelineUrl(city, context)).then((t) => JSON.parse(t))),
-    settle(fetchText(googleNewsRssUrl(city, context))),
     country ? settle(checkMfa({ city, country, fetchText })) : Promise.resolve({ ok: true, value: null }),
+    ...editions.map((ceid) => settle(fetchText(googleNewsRssUrl(spellings, context, ceid)))),
   ]);
 
   let mfa = mfaRes.value || null;
@@ -531,11 +526,14 @@ async function buildReport({ city, context = "", country = "", fetchText, now = 
   else errors.push("GDELT: " + timelineRes.error);
 
   let items = [];
-  if (rssRes.ok) items = parseRss(rssRes.value);
-  else errors.push("Google News: " + rssRes.error);
+  feedRes.forEach((res, i) => {
+    const ceid = editions[i];
+    if (res.ok) items.push(...parseRss(res.value).map((it) => ({ ...it, lang: DATA.editions[ceid].lang })));
+    else errors.push(`Google News (${ceid}): ` + res.error);
+  });
 
-  // Fall back to GDELT's article list if Google News failed.
-  if (!rssRes.ok) {
+  // Fall back to GDELT's article list if every Google News feed failed.
+  if (feedRes.every((r) => !r.ok)) {
     const art = await settle(fetchText(gdeltArticlesUrl(city, context)).then((t) => JSON.parse(t)));
     if (art.ok) items = parseGdeltArticles(art.value);
     else errors.push("GDELT articles: " + art.error);
@@ -545,13 +543,14 @@ async function buildReport({ city, context = "", country = "", fetchText, now = 
     throw new Error("No sources reachable. " + errors.join("; "));
   }
 
-  const headlines = prepareHeadlines(items, city, now);
+  const headlines = prepareHeadlines(items, spellings, now);
   const score = applyMfaFloor(scoreReport(headlines, volume), mfa);
   const level = levelFor(score);
   const sources = new Set(headlines.map((h) => h.source)).size;
 
   return {
     city,
+    names,
     context,
     score,
     level: level.name,
@@ -561,9 +560,10 @@ async function buildReport({ city, context = "", country = "", fetchText, now = 
     headlines: headlines.slice(0, 10),
     volume,
     country,
+    editions,
     mfa,
     errors,
-    link: googleNewsWebUrl(city, context),
+    link: googleNewsWebUrl(spellings, context),
     generatedAt: now.toISOString(),
   };
 }
@@ -600,7 +600,7 @@ function cacheStore(city) {
   const fm = FileManager.local();
   const dir = fm.joinPath(fm.documentsDirectory(), "city-unrest");
   if (!fm.fileExists(dir)) fm.createDirectory(dir, true);
-  const file = fm.joinPath(dir, city.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".json");
+  const file = fm.joinPath(dir, fold(city).replace(/[^\p{L}\p{N}]+/gu, "-") + ".json");
   return {
     load() {
       try {
@@ -695,6 +695,11 @@ function addMfaLine(stack, report) {
   });
 }
 
+// " · FR" for headlines that aren't in English.
+function langTag(h) {
+  return h.lang && h.lang !== "en" ? " · " + h.lang.toUpperCase() : "";
+}
+
 function addHeadline(stack, h, size) {
   const row = stack.addStack();
   row.layoutHorizontally();
@@ -705,7 +710,7 @@ function addHeadline(stack, h, size) {
   const col = row.addStack();
   col.layoutVertically();
   addText(col, h.title, size, { medium: true, lines: 2, scale: 0.85 });
-  const meta = h.source + (h.date ? " · " + timeAgo(h.date) : "");
+  const meta = h.source + (h.date ? " · " + timeAgo(h.date) : "") + langTag(h);
   addText(col, meta, size - 2, { alpha: 0.55, color: "#FFFFFF", lines: 1 });
 }
 
@@ -834,13 +839,14 @@ async function showInApp(report, trend) {
   head.isHeader = true;
   head.addText(
     `${report.city}: ${report.level} (${report.score}/100) ${trend.arrow}`,
-    `${report.reports} reports from ${report.sources} sources · ${formatTime(report.generatedAt)}`
+    `${report.reports} reports from ${report.sources} sources · ${formatTime(report.generatedAt)}` +
+      (report.editions ? ` · news in ${[...new Set(report.editions.map((e) => DATA.editions[e].lang.toUpperCase()))].join(", ")}` : "")
   );
   table.addRow(head);
   for (const h of report.headlines) {
     const row = new UITableRow();
     row.height = 74;
-    row.addText(h.title, `${h.source}${h.date ? " · " + timeAgo(h.date) : ""} · ${h.matched.join(", ")}`).titleFont =
+    row.addText(h.title, `${h.source}${h.date ? " · " + timeAgo(h.date) : ""}${langTag(h)} · ${h.matched.join(", ")}`).titleFont =
       Font.mediumSystemFont(14);
     row.dismissOnSelect = false;
     row.onSelect = () => Safari.open(safeUrl(h.url) || report.link);
@@ -878,21 +884,21 @@ async function main() {
   if (config.runsInApp && !param) {
     const a = new Alert();
     a.title = "City Unrest";
-    a.message = "Which city? Optionally add context and country: Portland | Oregon | United States";
+    a.message = "Which city? Optionally add context and country: Portland | Oregon | United States. Add local spellings after /, e.g. Moscow / Москва";
     a.addTextField("City", CONFIG.defaultCity);
     a.addAction("Check");
     a.addCancelAction("Cancel");
     if ((await a.presentAlert()) === -1) return;
     param = a.textFieldValue(0);
   }
-  const { city, context, country } = parseParam(param);
+  const { city, names, context, country } = parseParam(param);
   const cache = cacheStore([city, context, country].filter(Boolean).join("-"));
   const cached = cache.load() || { history: [] };
 
   let report;
   let stale = false;
   try {
-    report = await buildReport({ city, context, country, fetchText: scriptableFetch, now: new Date() });
+    report = await buildReport({ city, names, context, country, fetchText: scriptableFetch, now: new Date() });
   } catch (e) {
     if (!cached.report) {
       const w = errorWidget("Couldn't load reports. " + e.message);
@@ -936,6 +942,12 @@ if (IS_SCRIPTABLE) {
     trendFrom,
     buildReport,
     gdeltTimelineUrl,
+    DATA,
+    fold,
+    allNames,
+    editionsFor,
+    mentionsAny,
+    normalizeTitle,
     parseMfaPage,
     findMfaCountryLink,
     mfaCountryUrl,

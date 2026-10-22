@@ -11,7 +11,10 @@ val generateR by tasks.registering(Exec::class) {
 }
 
 sourceSets {
-    main { kotlin.srcDirs("../app/src/main/java", stubDir) }
+    main {
+        kotlin.srcDirs("../app/src/main/java", stubDir)
+        resources.srcDirs("../../data")
+    }
     test { kotlin.srcDirs("../app/src/test/java") }
 }
 

@@ -15,7 +15,13 @@ class WidgetStore(context: Context) {
 
     fun params(id: Int): Params? {
         val city = prefs.getString("city_$id", null) ?: return null
-        return Params(city, prefs.getString("context_$id", "").orEmpty(), prefs.getString("country_$id", "").orEmpty())
+        return Params(
+            city = city,
+            context = prefs.getString("context_$id", "").orEmpty(),
+            country = prefs.getString("country_$id", "").orEmpty(),
+            names = prefs.getString("names_$id", "").orEmpty().split("/").filter { it.isNotBlank() },
+            localNews = prefs.getBoolean("local_$id", true),
+        )
     }
 
     fun saveParams(id: Int, p: Params) {
@@ -23,6 +29,8 @@ class WidgetStore(context: Context) {
             .putString("city_$id", p.city)
             .putString("context_$id", p.context)
             .putString("country_$id", p.country)
+            .putString("names_$id", p.names.joinToString("/"))
+            .putBoolean("local_$id", p.localNews)
             .remove("report_$id")
             .remove("history_$id")
             .apply()
@@ -57,7 +65,7 @@ class WidgetStore(context: Context) {
 
     fun delete(id: Int) {
         prefs.edit().apply {
-            listOf("city", "context", "country", "report", "history", "error").forEach { remove("${it}_$id") }
+            listOf("city", "names", "local", "context", "country", "report", "history", "error").forEach { remove("${it}_$id") }
         }.apply()
     }
 }

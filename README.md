@@ -26,10 +26,17 @@ Portland | Oregon | United States
 ```
 
 - **Context** narrows the news search for cities that share a name.
-- **Country** is used for the MFA check. About 170 major cities are filled in
-  automatically; otherwise the context is tried, so `Lagos | Nigeria` also works.
+- **Country** is used for the MFA check and to pick the local news language.
+  About 170 major cities are filled in automatically; otherwise the context is
+  tried, so `Lagos | Nigeria` also works.
+- **Local spellings** go after `/`: `Moscow / Москва`, `Cologne / Köln`. Major
+  cities already know theirs (Москва, 東京, القاهرة, München…).
 
 ## Android
+
+If you installed an earlier test version, uninstall it first: the app is now
+signed with a permanent key, and Android won't install it over the old one.
+Updates after this install normally.
 
 1. Download the APK: on GitHub open **Actions → Build → the latest run →
    Artifacts → city-unrest-android**, and unzip it.
@@ -70,8 +77,11 @@ free, keyless sources:
   100+ languages. The widget asks for the 7-day volume of articles that
   mention the city alongside unrest terms, and compares the last 24 hours
   with the previous 6-day average to detect spikes.
-- **Google News RSS**: headlines from the last 24 hours. Each headline is
-  rated by its strongest term:
+- **Google News RSS**: headlines from the last 24 hours, from the city's
+  local-language edition (e.g. French for Paris, Japanese for Tokyo, Hindi and
+  English for Delhi) plus the international English edition. Local headlines
+  are shown as written, tagged with their language (e.g. `· FR`). Each
+  headline is rated by its strongest term, in its own language and English:
   - severity 3: *killed, shooting, curfew, state of emergency, coup…*
   - severity 2: *riot, clashes, tear gas, looting, arrests, unrest…*
   - severity 1: *protest, strike, blockade, rally…* (halved if "peaceful")
@@ -92,6 +102,13 @@ non-essential travel" naming the city sets a minimum of 35.
 If Google News fails, GDELT's article list is used for headlines instead. If
 everything fails, the last good result is shown, marked "cached".
 
+Local-language news covers 21 languages: Arabic, Chinese, Dutch, English,
+French, German, Greek, Hebrew, Hindi, Indonesian, Italian, Japanese, Korean,
+Polish, Portuguese, Russian, Spanish, Thai, Turkish, Ukrainian and Vietnamese.
+Countries in other languages get English news only. Turn it off with the
+**Also read news in the local language** box (Android) or
+`localNews: false` at the top of the iPhone script.
+
 ## Limits
 
 - Keyword-based: it measures *reporting about* unrest, not unrest itself.
@@ -100,8 +117,11 @@ everything fails, the last good result is shown, marked "cached".
   name appears on the page.
 - The MFA reader depends on the wording and layout of mfa.gov.sg. If MFA
   redesigns the site it may show "Check MFA page" until the parser is updated.
-- English terms by default. For non-English coverage change the Google News
-  edition (`newsLanguage` / `newsCountry`) and add local-language terms.
+- The local-language word lists are short and hand-written. They catch common
+  wording but will miss some headlines and occasionally misread one. Corrections
+  from native speakers are welcome in `data/unrest-data.json`.
+- Local headlines aren't translated. Tap one to open it; your browser can
+  translate the page.
 - Don't rely on it for safety decisions — check official advisories and local
   sources.
 
@@ -113,6 +133,10 @@ npm run check -- "Paris"    # print a live report from your computer
 cd android && ./gradlew testDebugUnitTest assembleRelease   # Android tests + APK
 ```
 
+Word lists, news editions and city names live in `data/unrest-data.json`,
+shared by both apps. After editing it, run `node scripts/sync-data.js` to copy
+it into the iPhone script (the tests fail if you forget).
+
 The iPhone widget (`widget/CityUnrest.js`) and the Android app
 (`android/app/src/main/java/.../core/`) contain the same logic in JavaScript
 and Kotlin. Both test suites use the same sample data and check for the same
@@ -121,3 +145,22 @@ score, so change them together.
 `android/jvm-check` compiles the Android code and runs its tests without the
 Android SDK (against Robolectric's copy of the framework). It's for
 environments where Google's Android downloads aren't available.
+
+## Android signing key
+
+Release APKs are signed with a permanent key so updates install over each
+other. The key is stored as two GitHub repository secrets, never in the code:
+
+| Secret | Contents |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | The keystore file, base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | Its password |
+
+Add them under **Settings → Secrets and variables → Actions → New repository
+secret**. Without them the build still works but signs with a temporary key
+(you'll see a warning in the build log). The "Show signing certificate" step
+of each build prints the key's SHA-256 fingerprint.
+
+Keep a private backup of the keystore and password (e.g. in a password
+manager). If they're lost, the next version can't be installed as an update;
+users would have to uninstall and reinstall.

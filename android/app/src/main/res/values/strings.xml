@@ -5,7 +5,8 @@
     <string name="intro_widget">Choose the city this widget watches.</string>
     <string name="intro_app">Check a city now. To add a widget, long-press your home screen, tap Widgets and pick City Unrest.</string>
     <string name="label_city">City</string>
-    <string name="hint_city">e.g. Nairobi</string>
+    <string name="hint_city">e.g. Nairobi. Add local spellings after /, e.g. Moscow / Москва</string>
+    <string name="label_local">Also read news in the local language</string>
     <string name="label_context">Context (optional)</string>
     <string name="hint_context">State or region, for cities that share a name, e.g. Oregon</string>
     <string name="label_country">Country for MFA check (optional)</string>

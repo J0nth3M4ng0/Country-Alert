@@ -7,6 +7,7 @@ import org.json.JSONObject
 
 fun Report.toJson(): JSONObject = JSONObject()
     .put("city", city)
+    .put("names", JSONArray(names))
     .put("context", context)
     .put("country", country)
     .put("score", score)
@@ -18,6 +19,7 @@ fun Report.toJson(): JSONObject = JSONObject()
     .put("volume", volume?.let {
         JSONObject().put("last24h", it.last24h).put("baseline", it.baseline).put("daily", JSONArray(it.daily))
     })
+    .put("editions", JSONArray(editions))
     .put("mfa", mfa?.toJson())
     .put("errors", JSONArray(errors))
     .put("link", link)
@@ -31,6 +33,7 @@ private fun Headline.toJson() = JSONObject()
     .put("severity", severity)
     .put("matched", JSONArray(matched))
     .put("weight", weight)
+    .put("lang", lang)
 
 private fun MfaResult.toJson() = JSONObject()
     .put("status", status.key)
@@ -53,6 +56,7 @@ fun reportFromJson(o: JSONObject): Report {
     val m = o.optJSONObject("mfa")
     return Report(
         city = o.getString("city"),
+        names = o.optJSONArray("names").strings(),
         context = o.optString("context"),
         country = o.optString("country"),
         score = o.getInt("score"),
@@ -70,12 +74,14 @@ fun reportFromJson(o: JSONObject): Report {
                 severity = h.optDouble("severity"),
                 matched = h.optJSONArray("matched").strings(),
                 weight = h.optDouble("weight"),
+                lang = h.optString("lang", "en"),
             )
         },
         volume = v?.let {
             val d = it.getJSONArray("daily")
             Volume(it.getDouble("last24h"), it.getDouble("baseline"), (0 until d.length()).map { i -> d.getDouble(i) })
         },
+        editions = o.optJSONArray("editions").strings(),
         mfa = m?.let {
             MfaResult(
                 status = MfaStatus.fromKey(it.optString("status")),

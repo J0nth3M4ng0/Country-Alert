@@ -29,6 +29,7 @@ class CoreTest {
 
     @Test fun parsesParameter() {
         assertEquals(Params("Portland", "Oregon", "United States"), parseParam(" Portland | Oregon | United States "))
+        assertEquals(listOf("Москва"), parseParam("Moscow / Москва").names)
         assertEquals("france", parseParam("Paris").country)
         assertEquals("Illinois", parseParam("Springfield | Illinois").country)
         assertEquals("", parseParam("Smalltown").country)
@@ -53,7 +54,7 @@ class CoreTest {
     }
 
     @Test fun preparesHeadlines() {
-        val hs = prepareHeadlines(parseRss(fixture("google-news.xml")), "Paris", now)
+        val hs = prepareHeadlines(parseRss(fixture("google-news.xml")), listOf("Paris"), now)
         assertEquals(listOf("BBC", "Reuters", "Le Monde", "France 24"), hs.map { it.source })
     }
 

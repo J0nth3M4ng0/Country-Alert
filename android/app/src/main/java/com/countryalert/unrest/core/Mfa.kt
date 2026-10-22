@@ -33,57 +33,9 @@ data class MfaResult(
         get() = date?.replace(Regex(" 20\\d\\d$"), "")?.replace(Regex("^(\\d+ \\w{3})\\w*$"), "$1").orEmpty()
 }
 
-/** Other names for countries, mapped to the words MFA uses. */
-val COUNTRY_ALIASES = mapOf(
-    "usa" to "united states", "us" to "united states", "america" to "united states",
-    "uk" to "united kingdom", "britain" to "united kingdom", "great britain" to "united kingdom",
-    "england" to "united kingdom", "scotland" to "united kingdom", "wales" to "united kingdom",
-    "turkey" to "turkiye", "south korea" to "korea", "ivory coast" to "cote d ivoire",
-    "czech republic" to "czechia", "burma" to "myanmar", "holland" to "netherlands",
-    "uae" to "united arab emirates", "drc" to "democratic republic of the congo",
-    "east timor" to "timor leste", "vietnam" to "viet nam", "laos" to "lao",
-)
-
-/** Common cities and their countries, so most users only need to type a city. */
-val CITY_COUNTRIES: Map<String, String> = (
-    "paris:france,lyon:france,marseille:france,london:united kingdom,manchester:united kingdom," +
-        "birmingham:united kingdom,glasgow:united kingdom,belfast:united kingdom,dublin:ireland," +
-        "berlin:germany,hamburg:germany,munich:germany,frankfurt:germany,madrid:spain,barcelona:spain," +
-        "lisbon:portugal,rome:italy,milan:italy,naples:italy,athens:greece,amsterdam:netherlands," +
-        "brussels:belgium,vienna:austria,zurich:switzerland,geneva:switzerland,stockholm:sweden," +
-        "oslo:norway,copenhagen:denmark,helsinki:finland,warsaw:poland,prague:czechia,budapest:hungary," +
-        "bucharest:romania,belgrade:serbia,sofia:bulgaria,kyiv:ukraine,kiev:ukraine,moscow:russia," +
-        "st petersburg:russia,tbilisi:georgia,yerevan:armenia,baku:azerbaijan,istanbul:turkiye,ankara:turkiye," +
-        "tel aviv:israel,jerusalem:israel,beirut:lebanon,amman:jordan,damascus:syria,baghdad:iraq," +
-        "tehran:iran,riyadh:saudi arabia,jeddah:saudi arabia,dubai:united arab emirates," +
-        "abu dhabi:united arab emirates,doha:qatar,kuwait city:kuwait,muscat:oman,sanaa:yemen,cairo:egypt," +
-        "alexandria:egypt,tunis:tunisia,algiers:algeria,tripoli:libya,casablanca:morocco,rabat:morocco," +
-        "khartoum:sudan,addis ababa:ethiopia,nairobi:kenya,mombasa:kenya,kampala:uganda,kigali:rwanda," +
-        "dar es salaam:tanzania,lagos:nigeria,abuja:nigeria,accra:ghana,dakar:senegal,abidjan:cote d ivoire," +
-        "kinshasa:democratic republic of the congo,luanda:angola,johannesburg:south africa," +
-        "cape town:south africa,durban:south africa,pretoria:south africa,harare:zimbabwe,maputo:mozambique," +
-        "antananarivo:madagascar,new york:united states,washington:united states,los angeles:united states," +
-        "chicago:united states,san francisco:united states,seattle:united states,boston:united states," +
-        "miami:united states,atlanta:united states,minneapolis:united states,houston:united states," +
-        "toronto:canada,montreal:canada,vancouver:canada,ottawa:canada,mexico city:mexico," +
-        "guadalajara:mexico,havana:cuba,port-au-prince:haiti,bogota:colombia,medellin:colombia," +
-        "caracas:venezuela,quito:ecuador,lima:peru,la paz:bolivia,santiago:chile,buenos aires:argentina," +
-        "sao paulo:brazil,rio de janeiro:brazil,brasilia:brazil,montevideo:uruguay,karachi:pakistan," +
-        "lahore:pakistan,islamabad:pakistan,kabul:afghanistan,delhi:india,new delhi:india,mumbai:india," +
-        "kolkata:india,chennai:india,bangalore:india,bengaluru:india,hyderabad:india,dhaka:bangladesh," +
-        "colombo:sri lanka,kathmandu:nepal,male:maldives,yangon:myanmar,mandalay:myanmar,bangkok:thailand," +
-        "chiang mai:thailand,phnom penh:cambodia,vientiane:lao,hanoi:viet nam,ho chi minh city:viet nam," +
-        "kuala lumpur:malaysia,johor bahru:malaysia,penang:malaysia,jakarta:indonesia,bali:indonesia," +
-        "denpasar:indonesia,surabaya:indonesia,manila:philippines,cebu:philippines,davao:philippines," +
-        "hong kong:hong kong,taipei:taiwan,beijing:china,shanghai:china,guangzhou:china,shenzhen:china," +
-        "chengdu:china,tokyo:japan,osaka:japan,seoul:korea,busan:korea,ulaanbaatar:mongolia," +
-        "sydney:australia,melbourne:australia,brisbane:australia,perth:australia,auckland:new zealand," +
-        "wellington:new zealand,port moresby:papua new guinea,noumea:new caledonia,suva:fiji"
-    ).split(",").associate { pair -> pair.split(":").let { it[0] to it[1] } }
-
 fun mfaCountryName(country: String): String {
     val n = normalizeName(country)
-    return COUNTRY_ALIASES[n] ?: n
+    return UnrestData.aliases[n] ?: n
 }
 
 fun mfaCountryUrl(country: String) = MFA_BASE + mfaCountryName(country).replace(" ", "-") + "/"

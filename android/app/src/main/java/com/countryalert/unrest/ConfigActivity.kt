@@ -6,10 +6,12 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import com.countryalert.unrest.core.Params
 import com.countryalert.unrest.core.Report
+import com.countryalert.unrest.core.UnrestData
 import com.countryalert.unrest.core.buildReport
 import com.countryalert.unrest.core.withDefaultCountry
 
@@ -23,6 +25,7 @@ class ConfigActivity : Activity() {
     private lateinit var context: EditText
     private lateinit var country: EditText
     private lateinit var result: TextView
+    private lateinit var localNews: CheckBox
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +38,7 @@ class ConfigActivity : Activity() {
         context = view(R.id.input_context)
         country = view(R.id.input_country)
         result = view(R.id.result)
+        localNews = view(R.id.input_local)
         val save = view<Button>(R.id.button_save)
         val check = view<Button>(R.id.button_check)
 
@@ -43,7 +47,8 @@ class ConfigActivity : Activity() {
         view<TextView>(R.id.intro).setText(if (hasWidget) R.string.intro_widget else R.string.intro_app)
 
         WidgetStore(this).params(widgetId)?.let {
-            city.setText(it.city)
+            city.setText((listOf(it.city) + it.names).joinToString(" / "))
+            localNews.isChecked = it.localNews
             context.setText(it.context)
             country.setText(it.country)
         }
@@ -55,12 +60,18 @@ class ConfigActivity : Activity() {
     private fun <T : View> view(id: Int): T = checkNotNull(findViewById<T>(id))
 
     private fun currentParams(): Params? {
-        val c = city.text.toString().trim()
-        if (c.isEmpty()) {
+        val spellings = city.text.toString().split("/").map { it.trim() }.filter { it.isNotEmpty() }
+        if (spellings.isEmpty()) {
             city.error = getString(R.string.error_city)
             return null
         }
-        return Params(c, context.text.toString().trim(), country.text.toString().trim())
+        return Params(
+            city = spellings[0],
+            context = context.text.toString().trim(),
+            country = country.text.toString().trim(),
+            names = spellings.drop(1),
+            localNews = localNews.isChecked,
+        )
     }
 
     private fun saveWidget() {
@@ -89,6 +100,8 @@ class ConfigActivity : Activity() {
     private fun describe(r: Report): String = buildString {
         append("${r.city}: ${r.level} — ${r.score}/100\n")
         append("${r.reports} reports from ${r.sources} sources in the last 24 hours\n")
+        val langs = r.editions.mapNotNull { UnrestData.editions[it]?.lang?.uppercase() }.distinct()
+        if (langs.isNotEmpty()) append("News read in: ${langs.joinToString(", ")}\n")
         r.volume?.let { append("Coverage: %.0f articles today vs %.1f/day before\n".format(it.last24h, it.baseline)) }
         r.mfa?.let { m ->
             append("\nSingapore MFA (${r.country.ifEmpty { "?" }}): ${m.status.label}")
@@ -98,7 +111,10 @@ class ConfigActivity : Activity() {
             append(if (m.mentionsCity) "Mentions ${r.city}: ${m.cityNote}\n" else "Does not mention ${r.city}\n")
         } ?: append("\nSingapore MFA: no country set\n")
         if (r.headlines.isNotEmpty()) append("\nHeadlines:\n")
-        r.headlines.forEach { append("• ${it.title} — ${it.source}\n") }
+        r.headlines.forEach {
+            val tag = if (it.lang != "en") " [${it.lang.uppercase()}]" else ""
+            append("• ${it.title} — ${it.source}$tag\n")
+        }
         if (r.errors.isNotEmpty()) append("\nSome sources failed: ${r.errors.joinToString("; ")}\n")
     }
 }

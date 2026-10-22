@@ -214,7 +214,8 @@ class UnrestWidget : AppWidgetProvider() {
                 }
                 v.setTextViewText(HEADLINE_TITLES[i], h.title)
                 v.setTextColor(HEADLINE_METAS[i], color(dot))
-                v.setTextViewText(HEADLINE_METAS[i], "● " + h.source + (h.date?.let { " · " + timeAgo(it) } ?: ""))
+                val tag = if (h.lang != "en") " · " + h.lang.uppercase() else ""
+                v.setTextViewText(HEADLINE_METAS[i], "● " + h.source + (h.date?.let { " · " + timeAgo(it) } ?: "") + tag)
                 if (safeUrl(h.url).isNotEmpty()) {
                     v.setOnClickPendingIntent(HEADLINE_ROWS[i], openUrl(context, h.url, id * 10 + 3 + i, report.link))
                 }

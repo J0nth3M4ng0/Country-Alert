@@ -76,4 +76,19 @@ fun splitSentences(text: String): List<String> =
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
+private val WEB_URL = Regex("^https?://[^\\s\"<>]+$", RegexOption.IGNORE_CASE)
+private val MFA_URL = Regex("^https://(www\\.)?mfa\\.gov\\.sg/", RegexOption.IGNORE_CASE)
+
+/**
+ * Only plain web links may be opened. Feed data is untrusted, and other
+ * schemes (intent:, file:, javascript:) could do more than open a page.
+ */
+fun safeUrl(u: String?): String {
+    val s = u?.trim().orEmpty()
+    return if (WEB_URL.matches(s)) s else ""
+}
+
+/** MFA links must point at MFA's own site. */
+fun isMfaUrl(u: String?): Boolean = MFA_URL.containsMatchIn(safeUrl(u))
+
 fun clip(s: String, max: Int = 220): String = if (s.length > max) s.take(max - 3) + "…" else s

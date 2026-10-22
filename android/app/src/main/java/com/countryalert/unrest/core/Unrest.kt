@@ -147,7 +147,7 @@ fun parseRss(xml: String): List<Item> {
                 title = title.substring(0, i).trim()
             }
         }
-        out += Item(title, source.ifEmpty { "Unknown" }, tagText(body, "link"), parseRssDate(tagText(body, "pubDate")))
+        out += Item(title, source.ifEmpty { "Unknown" }, safeUrl(tagText(body, "link")), parseRssDate(tagText(body, "pubDate")))
     }
     return out
 }
@@ -159,7 +159,7 @@ fun parseGdeltArticles(json: String): List<Item> {
         Item(
             decodeEntities(a.optString("title")),
             a.optString("domain").ifEmpty { "Unknown" },
-            a.optString("url"),
+            safeUrl(a.optString("url")),
             parseGdeltDate(a.optString("seendate")),
         )
     }

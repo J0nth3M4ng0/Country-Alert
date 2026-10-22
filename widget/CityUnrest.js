@@ -145,6 +145,18 @@ const CITY_COUNTRIES = Object.fromEntries(
 // Core logic (pure functions; also used by the tests and the command-line tool)
 // ---------------------------------------------------------------------------
 
+// Only plain web links may be opened. Feed data is untrusted, and other
+// schemes (shortcuts://, file:, javascript:) could do more than open a page.
+function safeUrl(u) {
+  const s = String(u || "").trim();
+  return /^https?:\/\/[^\s"<>]+$/i.test(s) ? s : "";
+}
+
+// MFA links must point at MFA's own site.
+function isMfaUrl(u) {
+  return /^https:\/\/(www\.)?mfa\.gov\.sg\//i.test(safeUrl(u));
+}
+
 function clamp(x, lo, hi) {
   return Math.min(hi, Math.max(lo, x));
 }
@@ -255,7 +267,7 @@ function parseRss(xml) {
     items.push({
       title,
       source: source || "Unknown",
-      url: tagText(body, "link"),
+      url: safeUrl(tagText(body, "link")),
       date: isNaN(pub) ? null : new Date(pub),
     });
   }
@@ -267,7 +279,7 @@ function parseGdeltArticles(json) {
   return list.map((a) => ({
     title: decodeEntities(a.title),
     source: a.domain || "Unknown",
-    url: a.url,
+    url: safeUrl(a.url),
     date: parseGdeltDate(a.seendate),
   }));
 }
@@ -340,8 +352,8 @@ function findMfaCountryLink(indexHtml, country) {
     if (text === want || slug === want) score = 3;
     else if (new RegExp(`(^| )${escapeRegex(want)}( |$)`).test(slug + " | " + text)) score = 2;
     if (score > (best ? best.score : 0)) {
-      const href = m[1].startsWith("http") ? m[1] : "https://www.mfa.gov.sg" + (m[1].startsWith("/") ? "" : "/") + m[1];
-      best = { score, url: href };
+      const href = /^https?:/i.test(m[1]) ? m[1] : "https://www.mfa.gov.sg" + (m[1].startsWith("/") ? "" : "/") + m[1];
+      if (isMfaUrl(href)) best = { score, url: href };
     }
   }
   return best ? best.url : null;
@@ -672,7 +684,7 @@ function addMfaLine(stack, report) {
   if (!info) return;
   const row = stack.addStack();
   row.centerAlignContent();
-  if (report.mfa.url) row.url = report.mfa.url;
+  if (isMfaUrl(report.mfa.url)) row.url = report.mfa.url;
   const city = report.mfa.mentionsCity ? " ⚑" : "";
   addText(row, "SG MFA: ", 10, { bold: true, alpha: 0.75, color: "#FFFFFF", lines: 1 });
   addText(row, info.label + city + (info.short ? " · " + info.short : ""), 10, {
@@ -687,7 +699,7 @@ function addHeadline(stack, h, size) {
   const row = stack.addStack();
   row.layoutHorizontally();
   row.topAlignContent();
-  if (h.url) row.url = h.url;
+  if (safeUrl(h.url)) row.url = h.url;
   const dotColor = h.severity >= 3 ? "#FF3B30" : h.severity >= 2 ? "#FF9500" : "#FFCC00";
   addText(row, "● ", size - 2, { color: dotColor });
   const col = row.addStack();
@@ -778,7 +790,7 @@ function buildWidget(report, trend, stale) {
     w.addSpacer(8);
     const box = w.addStack();
     box.layoutVertically();
-    if (report.mfa.url) box.url = report.mfa.url;
+    if (isMfaUrl(report.mfa.url)) box.url = report.mfa.url;
     addText(box, report.mfa.mentionsCity && report.mfa.cityNote ? report.mfa.cityNote : report.mfa.summary, 10, {
       alpha: 0.8,
       color: "#FFFFFF",
@@ -831,7 +843,7 @@ async function showInApp(report, trend) {
     row.addText(h.title, `${h.source}${h.date ? " · " + timeAgo(h.date) : ""} · ${h.matched.join(", ")}`).titleFont =
       Font.mediumSystemFont(14);
     row.dismissOnSelect = false;
-    row.onSelect = () => Safari.open(h.url);
+    row.onSelect = () => Safari.open(safeUrl(h.url) || report.link);
     table.addRow(row);
   }
   if (report.mfa) {
@@ -850,7 +862,7 @@ async function showInApp(report, trend) {
     cell.titleColor = new Color(info.color);
     cell.subtitleFont = Font.systemFont(12);
     row.dismissOnSelect = false;
-    row.onSelect = () => Safari.open(report.mfa.url || MFA_BASE);
+    row.onSelect = () => Safari.open(isMfaUrl(report.mfa.url) ? report.mfa.url : MFA_BASE);
     table.addRow(row);
   }
   if (report.errors.length) {
@@ -930,6 +942,8 @@ if (IS_SCRIPTABLE) {
     checkMfa,
     applyMfaFloor,
     htmlToText,
+    safeUrl,
+    isMfaUrl,
     googleNewsRssUrl,
   };
 }

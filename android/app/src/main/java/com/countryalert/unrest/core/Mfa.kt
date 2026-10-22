@@ -108,9 +108,9 @@ fun findMfaCountryLink(indexHtml: String, country: String): String? {
             else -> 0
         }
         if (score > (best?.first ?: 0)) {
-            val url = if (href.startsWith("http")) href
+            val url = if (Regex("^https?:", RegexOption.IGNORE_CASE).containsMatchIn(href)) href
             else "https://www.mfa.gov.sg" + (if (href.startsWith("/")) "" else "/") + href
-            best = score to url
+            if (isMfaUrl(url)) best = score to url
         }
     }
     return best?.second

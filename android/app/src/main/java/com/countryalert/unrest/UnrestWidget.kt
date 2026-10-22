@@ -15,7 +15,10 @@ import android.os.Bundle
 import android.text.format.DateFormat
 import android.view.View
 import android.widget.RemoteViews
+import com.countryalert.unrest.core.MFA_BASE
 import com.countryalert.unrest.core.Report
+import com.countryalert.unrest.core.isMfaUrl
+import com.countryalert.unrest.core.safeUrl
 import com.countryalert.unrest.core.timeAgo
 import com.countryalert.unrest.core.trendFrom
 import java.util.Date
@@ -72,13 +75,21 @@ class UnrestWidget : AppWidgetProvider() {
             return Color.argb(alpha, Color.red(c), Color.green(c), Color.blue(c))
         }
 
-        private fun openUrl(context: Context, url: String, requestCode: Int): PendingIntent =
-            PendingIntent.getActivity(
+        /** Opens a web page. Anything that isn't an http(s) link opens [fallback] instead. */
+        private fun openUrl(context: Context, url: String, requestCode: Int, fallback: String = MFA_BASE): PendingIntent {
+            val target = safeUrl(url).ifEmpty { fallback }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            return PendingIntent.getActivity(
                 context,
                 requestCode,
-                Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
+        }
+
+        private fun mfaLink(url: String) = if (isMfaUrl(url)) url else MFA_BASE
 
         private fun refreshIntent(context: Context, id: Int): PendingIntent =
             PendingIntent.getBroadcast(
@@ -160,7 +171,7 @@ class UnrestWidget : AppWidgetProvider() {
                 v.setViewVisibility(R.id.mfa, View.VISIBLE)
                 v.setTextViewText(R.id.mfa, "SG MFA: ${mfa.status.label}$flag$date")
                 v.setTextColor(R.id.mfa, color(mfa.status.color))
-                v.setOnClickPendingIntent(R.id.mfa, openUrl(context, mfa.url, id * 10 + 1))
+                v.setOnClickPendingIntent(R.id.mfa, openUrl(context, mfaLink(mfa.url), id * 10 + 1))
             } else {
                 v.setViewVisibility(R.id.mfa, View.GONE)
             }
@@ -182,7 +193,7 @@ class UnrestWidget : AppWidgetProvider() {
             if (large && mfa != null && mfa.summary.isNotEmpty()) {
                 v.setViewVisibility(R.id.mfa_note, View.VISIBLE)
                 v.setTextViewText(R.id.mfa_note, if (mfa.mentionsCity && mfa.cityNote.isNotEmpty()) mfa.cityNote else mfa.summary)
-                v.setOnClickPendingIntent(R.id.mfa_note, openUrl(context, mfa.url, id * 10 + 2))
+                v.setOnClickPendingIntent(R.id.mfa_note, openUrl(context, mfaLink(mfa.url), id * 10 + 2))
             }
             val vol = report.volume
             if (large && vol != null) {
@@ -204,7 +215,9 @@ class UnrestWidget : AppWidgetProvider() {
                 v.setTextViewText(HEADLINE_TITLES[i], h.title)
                 v.setTextColor(HEADLINE_METAS[i], color(dot))
                 v.setTextViewText(HEADLINE_METAS[i], "● " + h.source + (h.date?.let { " · " + timeAgo(it) } ?: ""))
-                if (h.url.isNotEmpty()) v.setOnClickPendingIntent(HEADLINE_ROWS[i], openUrl(context, h.url, id * 10 + 3 + i))
+                if (safeUrl(h.url).isNotEmpty()) {
+                    v.setOnClickPendingIntent(HEADLINE_ROWS[i], openUrl(context, h.url, id * 10 + 3 + i, report.link))
+                }
             }
         }
 

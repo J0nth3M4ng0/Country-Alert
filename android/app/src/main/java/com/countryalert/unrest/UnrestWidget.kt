@@ -46,7 +46,7 @@ class UnrestWidget : AppWidgetProvider() {
             val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 render(context, AppWidgetManager.getInstance(context), id, refreshing = true)
-                RefreshJob.schedule(context, intArrayOf(id))
+                RefreshJob.schedule(context, intArrayOf(id), urgent = true)
             }
         }
     }

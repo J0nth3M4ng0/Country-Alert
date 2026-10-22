@@ -7,6 +7,7 @@ import android.app.job.JobService
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import android.os.PersistableBundle
 import com.countryalert.unrest.core.buildReport
 import com.countryalert.unrest.core.withDefaultCountry
@@ -35,16 +36,27 @@ class RefreshJob : JobService() {
             AppWidgetManager.getInstance(context)
                 .getAppWidgetIds(ComponentName(context, UnrestWidget::class.java))
 
-        /** Asks the system to refresh soon, once a network is available. */
-        fun schedule(context: Context, ids: IntArray? = null) {
+        /**
+         * Asks the system to refresh once a network is available. [urgent] is for
+         * refreshes the user asked for: Android 12+ runs them right away instead
+         * of waiting for a convenient moment.
+         */
+        fun schedule(context: Context, ids: IntArray? = null, urgent: Boolean = false) {
             val extras = PersistableBundle()
             if (ids != null) extras.putIntArray(EXTRA_IDS, ids)
             val jobId = if (ids != null && ids.size == 1) ids[0] else JOB_ALL
-            val job = JobInfo.Builder(jobId, ComponentName(context, RefreshJob::class.java))
+            val builder = JobInfo.Builder(jobId, ComponentName(context, RefreshJob::class.java))
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setExtras(extras)
-                .build()
-            context.getSystemService(JobScheduler::class.java)?.schedule(job)
+            if (urgent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) builder.setExpedited(true)
+            val scheduler = context.getSystemService(JobScheduler::class.java) ?: return
+            val ok = try {
+                scheduler.schedule(builder.build()) == JobScheduler.RESULT_SUCCESS
+            } catch (e: Exception) {
+                false
+            }
+            // Out of urgent-job quota: fall back to a normal job.
+            if (!ok && urgent) schedule(context, ids, urgent = false)
         }
 
         /** Fetches a new report for one widget and redraws it. Call off the main thread. */

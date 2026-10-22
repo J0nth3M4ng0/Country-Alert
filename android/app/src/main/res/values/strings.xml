@@ -14,6 +14,7 @@
     <string name="button_save">Save widget</string>
     <string name="button_check">Check now</string>
     <string name="checking">Checking news and MFA…</string>
+    <string name="loading_widget">Loading the latest news for your widget… This screen closes when it\'s done.</string>
     <string name="error_city">Enter a city</string>
     <string name="error_load">Couldn\'t load reports: %1$s</string>
     <string name="no_reports">No unrest-related reports in the last 24 hours.</string>

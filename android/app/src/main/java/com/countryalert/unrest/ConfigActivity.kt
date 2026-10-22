@@ -26,6 +26,8 @@ open class ConfigActivity : Activity() {
     private lateinit var country: EditText
     private lateinit var result: TextView
     private lateinit var localNews: CheckBox
+    private lateinit var save: Button
+    private lateinit var check: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,8 +41,8 @@ open class ConfigActivity : Activity() {
         country = view(R.id.input_country)
         result = view(R.id.result)
         localNews = view(R.id.input_local)
-        val save = view<Button>(R.id.button_save)
-        val check = view<Button>(R.id.button_check)
+        save = view(R.id.button_save)
+        check = view(R.id.button_check)
 
         val hasWidget = widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
         save.visibility = if (hasWidget) View.VISIBLE else View.GONE
@@ -74,14 +76,26 @@ open class ConfigActivity : Activity() {
         )
     }
 
+    /**
+     * Saves the city and loads the first report while this screen is still
+     * open. Background work can be delayed for a long time on some phones
+     * (e.g. OnePlus), so the first load shouldn't depend on it.
+     */
     private fun saveWidget() {
         val p = currentParams() ?: return
         WidgetStore(this).saveParams(widgetId, p)
-        val manager = AppWidgetManager.getInstance(this)
-        UnrestWidget.render(this, manager, widgetId)
-        RefreshJob.schedule(this, intArrayOf(widgetId))
+        UnrestWidget.render(this, AppWidgetManager.getInstance(this), widgetId)
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-        finish()
+
+        save.isEnabled = false
+        check.isEnabled = false
+        result.text = getString(R.string.loading_widget)
+        val app = applicationContext
+        val id = widgetId
+        Thread {
+            RefreshJob.refreshWidget(app, id)
+            runOnUiThread { if (!isFinishing) finish() }
+        }.start()
     }
 
     private fun checkNow() {

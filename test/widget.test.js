@@ -80,7 +80,9 @@ test("builds a full report from both sources", async () => {
   const r = await w.buildReport({ city: "Paris", fetchText, now: NOW });
   assert.strictEqual(r.reports, 4);
   assert.strictEqual(r.sources, 4);
-  assert.ok(r.score >= 35, "score " + r.score);
+  // The Android app's CoreTest expects the same score; keep them in step.
+  assert.strictEqual(r.score, 67);
+  assert.strictEqual(r.level, "High");
   assert.deepStrictEqual(r.errors, []);
   assert.ok(r.link.startsWith("https://news.google.com/search?q="));
 });

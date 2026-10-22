@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">City Unrest</string>
+    <string name="widget_description">Unrest level in a city from open-source news, plus Singapore MFA travel advisories</string>
+    <string name="intro_widget">Choose the city this widget watches.</string>
+    <string name="intro_app">Check a city now. To add a widget, long-press your home screen, tap Widgets and pick City Unrest.</string>
+    <string name="label_city">City</string>
+    <string name="hint_city">e.g. Nairobi</string>
+    <string name="label_context">Context (optional)</string>
+    <string name="hint_context">State or region, for cities that share a name, e.g. Oregon</string>
+    <string name="label_country">Country for MFA check (optional)</string>
+    <string name="hint_country">Filled in automatically for major cities</string>
+    <string name="button_save">Save widget</string>
+    <string name="button_check">Check now</string>
+    <string name="checking">Checking news and MFA…</string>
+    <string name="error_city">Enter a city</string>
+    <string name="error_load">Couldn\'t load reports: %1$s</string>
+    <string name="no_reports">No unrest-related reports in the last 24 hours.</string>
+    <string name="disclaimer">Scores measure news coverage, not ground truth. Check official advisories before travel decisions.</string>
+</resources>

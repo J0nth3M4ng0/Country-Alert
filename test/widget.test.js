@@ -68,10 +68,6 @@ test("scores stay in range and rise with severity", () => {
   assert.ok(w.scoreReport(mild, null) < 15);
   assert.ok(w.scoreReport(bad, spike) >= 90);
   assert.ok(w.scoreReport(bad, spike) <= 100);
-  // No headlines about the city: coverage alone doesn't move the score...
-  assert.strictEqual(w.scoreReport([], spike), 0);
-  // ...unless the news feeds couldn't be read and coverage is all there is.
-  assert.ok(w.scoreReport([], spike, false) > 30);
   assert.strictEqual(w.levelFor(0).name, "Calm");
   assert.strictEqual(w.levelFor(60).name, "High");
   assert.strictEqual(w.levelFor(100).name, "Severe");

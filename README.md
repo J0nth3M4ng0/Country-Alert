@@ -108,9 +108,7 @@ used for its government ("Brasília condemns the crackdown in Caracas") doesn't
 count as unrest in that city. Translated headlines are checked again in English.
 
 The score combines headline severity (up to 50 points), the coverage spike (up
-to 30) and the absolute coverage volume (up to 20). Coverage only counts when
-there's at least one headline about the city (or when the news feeds can't be
-read), so a city with no reports scores 0. Three or more severity-3
+to 30) and the absolute coverage volume (up to 20). Three or more severity-3
 headlines force at least **High**. An MFA "defer all travel" advisory sets a
 minimum of **Elevated** (35), or **High** (55) if it names the city; "defer
 non-essential travel" naming the city sets a minimum of 35.

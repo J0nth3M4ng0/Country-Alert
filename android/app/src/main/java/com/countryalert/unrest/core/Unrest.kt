@@ -343,19 +343,11 @@ fun prepareHeadlines(items: List<Item>, names: List<String>, now: Long, country:
     return out.sortedWith(compareByDescending<Headline> { it.severity }.thenByDescending { it.date ?: 0L })
 }
 
-/**
- * GDELT's coverage count includes articles that only mention the city in
- * passing, and it wobbles from hour to hour. So it only adds to the score when
- * there's at least one headline about the city, or when the news feeds
- * couldn't be read ([newsOk] false) and it's all there is.
- */
-fun scoreReport(headlines: List<Headline>, volume: Volume?, newsOk: Boolean = true): Int {
+fun scoreReport(headlines: List<Headline>, volume: Volume?): Int {
     val sevSum = headlines.sumOf { it.weight }
     val severeCount = headlines.count { it.severity >= 3 }
     val headlinePts = 50 * (1 - exp(-sevSum / 15))
-    var score = if (newsOk && headlines.isEmpty()) {
-        0.0
-    } else if (volume != null) {
+    var score = if (volume != null) {
         val ratio = volume.last24h / max(volume.baseline, 1.0)
         val spikePts = 30 * ((ratio - 1) / 3).coerceIn(0.0, 1.0)
         val volumePts = 20 * (1 - exp(-volume.last24h / 60))
@@ -451,12 +443,11 @@ fun buildReport(
         )
     }
 
-    var newsOk = feedRes.any { it.isSuccess }
     // Fall back to GDELT's article list if every Google News feed failed.
-    if (!newsOk) {
-        val art = attempt { parseGdeltArticles(fetchText(gdeltArticlesUrl(city, context))) }
-        items = art.getOrElse { errors += "GDELT articles: " + it.short(); emptyList() }.toMutableList()
-        newsOk = art.isSuccess
+    if (feedRes.all { it.isFailure }) {
+        items = attempt { parseGdeltArticles(fetchText(gdeltArticlesUrl(city, context))) }
+            .getOrElse { errors += "GDELT articles: " + it.short(); emptyList() }
+            .toMutableList()
     }
 
     if (volume == null && items.isEmpty() && errors.isNotEmpty()) {
@@ -473,7 +464,7 @@ fun buildReport(
         translationCache = t.cache
         t.error?.let { errors += it }
     }
-    val score = applyMfaFloor(scoreReport(headlines, volume, newsOk), mfa)
+    val score = applyMfaFloor(scoreReport(headlines, volume), mfa)
     val level = levelFor(score)
     return Report(
         city = city,

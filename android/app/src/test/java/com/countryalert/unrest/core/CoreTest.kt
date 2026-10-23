@@ -72,8 +72,6 @@ class CoreTest {
         val spike = Volume(300.0, 20.0, emptyList())
         assertTrue(scoreReport(mild, null) < 15)
         assertTrue(scoreReport(bad, spike) in 90..100)
-        assertEquals(0, scoreReport(emptyList(), spike))
-        assertTrue(scoreReport(emptyList(), spike, newsOk = false) > 30)
         assertEquals("Calm", levelFor(0).name)
         assertEquals("High", levelFor(60).name)
         assertEquals("Severe", levelFor(100).name)

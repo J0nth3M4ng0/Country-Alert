@@ -514,18 +514,12 @@ function levelFor(score) {
   return LEVELS.find((l) => score >= l.min);
 }
 
-// GDELT's coverage count includes articles that only mention the city in
-// passing, and it wobbles from hour to hour. So it only adds to the score
-// when there's at least one headline about the city, or when the news
-// feeds couldn't be read (newsOk false) and it's all there is.
-function scoreReport(headlines, volume, newsOk = true) {
+function scoreReport(headlines, volume) {
   const sevSum = headlines.reduce((s, h) => s + h.weight, 0);
   const severeCount = headlines.filter((h) => h.severity >= 3).length;
   const headlinePts = 50 * (1 - Math.exp(-sevSum / 15));
   let score;
-  if (newsOk && !headlines.length) {
-    score = 0;
-  } else if (volume) {
+  if (volume) {
     const ratio = volume.last24h / Math.max(volume.baseline, 1);
     const spikePts = 30 * clamp((ratio - 1) / 3, 0, 1);
     const volumePts = 20 * (1 - Math.exp(-volume.last24h / 60));
@@ -640,13 +634,11 @@ async function buildReport({
     else errors.push(`Google News (${ceid}): ` + res.error);
   });
 
-  let newsOk = feedRes.some((r) => r.ok);
   // Fall back to GDELT's article list if every Google News feed failed.
-  if (!newsOk) {
+  if (feedRes.every((r) => !r.ok)) {
     const art = await settle(fetchText(gdeltArticlesUrl(city, context)).then((t) => JSON.parse(t)));
     if (art.ok) items = parseGdeltArticles(art.value);
     else errors.push("GDELT articles: " + art.error);
-    newsOk = art.ok;
   }
 
   if (!volume && !items.length && errors.length) {
@@ -663,7 +655,7 @@ async function buildReport({
     translationCache = t.cache;
     if (t.error) errors.push(t.error);
   }
-  const score = applyMfaFloor(scoreReport(headlines, volume, newsOk), mfa);
+  const score = applyMfaFloor(scoreReport(headlines, volume), mfa);
   const level = levelFor(score);
   const sources = new Set(headlines.map((h) => h.source)).size;
 
